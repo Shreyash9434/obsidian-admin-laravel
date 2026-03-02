@@ -23,6 +23,8 @@ class UserService
             'status' => $dto->status,
             'role_id' => $dto->roleId,
             'tenant_id' => $dto->tenantId,
+            'organization_id' => $dto->organizationId,
+            'team_id' => $dto->teamId,
             'tenant_scope_id' => $dto->tenantId ?? 0,
         ]);
 
@@ -42,6 +44,8 @@ class UserService
             'status' => $dto->status,
             'role_id' => $dto->roleId,
             'tenant_id' => $dto->tenantId,
+            'organization_id' => $dto->organizationId,
+            'team_id' => $dto->teamId,
             'tenant_scope_id' => $dto->tenantId ?? 0,
         ];
 

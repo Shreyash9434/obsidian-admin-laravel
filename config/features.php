@@ -28,6 +28,16 @@ return [
             'enabled' => filter_var(env('FF_MENU_IAM', env('MENU_FEATURE_IAM', true)), FILTER_VALIDATE_BOOLEAN),
             'percentage' => (int) env('FF_MENU_IAM_PERCENTAGE', 100),
         ],
+        'menu.organization' => [
+            'enabled' => filter_var(env('FF_MENU_ORGANIZATION', env('MENU_FEATURE_ORGANIZATION', true)), FILTER_VALIDATE_BOOLEAN),
+            'tenant_only' => true,
+            'percentage' => (int) env('FF_MENU_ORGANIZATION_PERCENTAGE', 100),
+        ],
+        'menu.team' => [
+            'enabled' => filter_var(env('FF_MENU_TEAM', env('MENU_FEATURE_TEAM', true)), FILTER_VALIDATE_BOOLEAN),
+            'tenant_only' => true,
+            'percentage' => (int) env('FF_MENU_TEAM_PERCENTAGE', 100),
+        ],
         'menu.role' => [
             'enabled' => filter_var(env('FF_MENU_ROLE', env('MENU_FEATURE_ROLE', true)), FILTER_VALIDATE_BOOLEAN),
             'percentage' => (int) env('FF_MENU_ROLE_PERCENTAGE', 100),

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domains\Access\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Domains\Tenant\Models\Organization;
 use App\Domains\Tenant\Models\Tenant;
+use App\Domains\Tenant\Models\Team;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -38,6 +40,8 @@ class User extends Authenticatable
         'status',
         'role_id',
         'tenant_id',
+        'organization_id',
+        'team_id',
         'tenant_scope_id',
         'two_factor_enabled',
         'two_factor_secret',
@@ -66,6 +70,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'status' => 'string',
             'tenant_id' => 'integer',
+            'organization_id' => 'integer',
+            'team_id' => 'integer',
             'tenant_scope_id' => 'integer',
             'two_factor_enabled' => 'boolean',
             'deleted_at' => 'datetime',
@@ -79,14 +85,36 @@ class User extends Authenticatable
         });
     }
 
+    /**
+     * @return BelongsTo<Role, $this>
+     */
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
     }
 
+    /**
+     * @return BelongsTo<Tenant, $this>
+     */
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    /**
+     * @return BelongsTo<Organization, $this>
+     */
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
+    /**
+     * @return BelongsTo<Team, $this>
+     */
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
     }
 
     public function preference(): HasOne
@@ -115,12 +143,17 @@ class User extends Authenticatable
             return $this->resolvedPermissionCodes;
         }
 
-        $this->resolvedPermissionCodes = $this->role->permissions
+        $codes = $this->role->permissions
             ->where('status', '1')
             ->pluck('code')
-            ->map(static fn ($code): string => (string) $code)
-            ->values()
             ->all();
+
+        $this->resolvedPermissionCodes = array_values(
+            array_filter(
+                array_map(static fn (mixed $code): string => (string) $code, $codes),
+                static fn (string $code): bool => $code !== ''
+            )
+        );
 
         return $this->resolvedPermissionCodes;
     }

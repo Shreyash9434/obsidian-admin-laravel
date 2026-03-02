@@ -8,6 +8,8 @@ use App\Domains\Access\Http\Resources\UserListResource;
 use App\Domains\Access\Models\User;
 use App\Domains\Auth\Http\Controllers\AbstractUserController;
 use App\Domains\Shared\Support\TenantVisibility;
+use App\Domains\Tenant\Models\Organization;
+use App\Domains\Tenant\Models\Team;
 use App\DTOs\User\CreateUserDTO;
 use App\DTOs\User\UpdateUserDTO;
 use App\Http\Requests\Api\User\AssignUserRoleRequest;
@@ -44,8 +46,23 @@ class UserManagementController extends AbstractUserController
         $status = (string) ($validated['status'] ?? '');
 
         $query = User::query()
-            ->with('role:id,code,name,level')
-            ->select(['id', 'name', 'email', 'status', 'role_id', 'tenant_id', 'created_at', 'updated_at'])
+            ->with([
+                'role:id,code,name,level',
+                'organization:id,name',
+                'team:id,name',
+            ])
+            ->select([
+                'id',
+                'name',
+                'email',
+                'status',
+                'role_id',
+                'tenant_id',
+                'organization_id',
+                'team_id',
+                'created_at',
+                'updated_at',
+            ])
             ->where('id', '!=', $authUser->id)
             ->where(function ($builder) use ($actorLevel): void {
                 $builder->whereNull('role_id')
@@ -227,8 +244,16 @@ class UserManagementController extends AbstractUserController
             return $this->error(self::PARAM_ERROR_CODE, 'Role does not belong to selected tenant');
         }
         $targetTenantId = $roleModel->tenant_id !== null ? (int) $roleModel->tenant_id : null;
+        $binding = $this->resolveOrganizationTeamBinding(
+            $targetTenantId,
+            $validated['organizationId'] ?? null,
+            $validated['teamId'] ?? null
+        );
+        if (! $binding['ok']) {
+            return $this->error(self::PARAM_ERROR_CODE, $binding['msg']);
+        }
 
-        return $this->withIdempotency($request, $authUser, function () use ($validated, $roleModel, $targetTenantId, $authUser, $request): JsonResponse {
+        return $this->withIdempotency($request, $authUser, function () use ($validated, $roleModel, $targetTenantId, $binding, $authUser, $request): JsonResponse {
             $user = $this->userService->create(new CreateUserDTO(
                 name: trim((string) $validated['userName']),
                 email: trim((string) $validated['email']),
@@ -236,6 +261,8 @@ class UserManagementController extends AbstractUserController
                 status: (string) ($validated['status'] ?? '1'),
                 roleId: $roleModel->id,
                 tenantId: $targetTenantId,
+                organizationId: $binding['organizationId'],
+                teamId: $binding['teamId'],
             ));
             $this->auditLogService->record(
                 action: 'user.create',
@@ -247,6 +274,8 @@ class UserManagementController extends AbstractUserController
                     'email' => $user->email,
                     'roleCode' => $roleModel->code,
                     'status' => (string) $user->status,
+                    'organizationId' => $binding['organizationId'],
+                    'teamId' => $binding['teamId'],
                 ],
                 tenantId: $targetTenantId
             );
@@ -258,6 +287,8 @@ class UserManagementController extends AbstractUserController
                 'roleCode' => $roleModel->code,
                 'roleName' => $roleModel->name,
                 'status' => (string) $user->status,
+                'organizationId' => $user->organization_id ? (string) $user->organization_id : null,
+                'teamId' => $user->team_id ? (string) $user->team_id : null,
             ], 'User created');
         });
     }
@@ -313,6 +344,14 @@ class UserManagementController extends AbstractUserController
         if (! $this->isRoleInTenantScope($roleModel, $targetTenantId)) {
             return $this->error(self::PARAM_ERROR_CODE, 'Role does not belong to user tenant');
         }
+        $binding = $this->resolveOrganizationTeamBinding(
+            $targetTenantId,
+            $validated['organizationId'] ?? null,
+            $validated['teamId'] ?? null
+        );
+        if (! $binding['ok']) {
+            return $this->error(self::PARAM_ERROR_CODE, $binding['msg']);
+        }
 
         $password = (string) ($validated['password'] ?? '');
 
@@ -321,6 +360,8 @@ class UserManagementController extends AbstractUserController
             'email' => $user->email,
             'roleCode' => (string) ($user->role?->code ?? ''),
             'status' => (string) $user->status,
+            'organizationId' => $user->organization_id ? (int) $user->organization_id : null,
+            'teamId' => $user->team_id ? (int) $user->team_id : null,
         ];
         $this->userService->update($user, new UpdateUserDTO(
             name: trim((string) $validated['userName']),
@@ -329,6 +370,8 @@ class UserManagementController extends AbstractUserController
             status: (string) ($validated['status'] ?? $user->status),
             roleId: $roleModel->id,
             tenantId: $targetTenantId,
+            organizationId: $binding['organizationId'],
+            teamId: $binding['teamId'],
         ));
         $this->auditLogService->record(
             action: 'user.update',
@@ -341,6 +384,8 @@ class UserManagementController extends AbstractUserController
                 'email' => $user->email,
                 'roleCode' => $roleModel->code,
                 'status' => (string) $user->status,
+                'organizationId' => $binding['organizationId'],
+                'teamId' => $binding['teamId'],
             ],
             tenantId: $targetTenantId
         );
@@ -352,6 +397,8 @@ class UserManagementController extends AbstractUserController
             'roleCode' => $roleModel->code,
             'roleName' => $roleModel->name,
             'status' => (string) $user->status,
+            'organizationId' => $user->organization_id ? (string) $user->organization_id : null,
+            'teamId' => $user->team_id ? (string) $user->team_id : null,
             'version' => (string) ($user->updated_at?->copy()->setTimezone('UTC')->timestamp ?? 0),
             'updateTime' => ApiDateTime::formatForRequest($user->updated_at, $request),
         ], 'User updated');
@@ -407,5 +454,98 @@ class UserManagementController extends AbstractUserController
         TenantVisibility::applyScope($query, $tenantId, $isSuper);
 
         return $query->first();
+    }
+
+    /**
+     * @return array{
+     *   ok: bool,
+     *   msg: string,
+     *   organizationId: int|null,
+     *   teamId: int|null
+     * }
+     */
+    private function resolveOrganizationTeamBinding(?int $tenantId, mixed $organizationIdInput, mixed $teamIdInput): array
+    {
+        $organizationId = is_numeric($organizationIdInput) ? (int) $organizationIdInput : null;
+        $teamId = is_numeric($teamIdInput) ? (int) $teamIdInput : null;
+
+        if ($organizationId !== null && $organizationId <= 0) {
+            $organizationId = null;
+        }
+        if ($teamId !== null && $teamId <= 0) {
+            $teamId = null;
+        }
+
+        if ($tenantId === null) {
+            if ($organizationId !== null || $teamId !== null) {
+                return [
+                    'ok' => false,
+                    'msg' => 'Organization and team are not available for platform users',
+                    'organizationId' => null,
+                    'teamId' => null,
+                ];
+            }
+
+            return [
+                'ok' => true,
+                'msg' => 'ok',
+                'organizationId' => null,
+                'teamId' => null,
+            ];
+        }
+
+        $organization = null;
+        if ($organizationId !== null) {
+            $organization = Organization::query()
+                ->where('tenant_id', $tenantId)
+                ->find($organizationId);
+
+            if (! $organization) {
+                return [
+                    'ok' => false,
+                    'msg' => 'Organization not found',
+                    'organizationId' => null,
+                    'teamId' => null,
+                ];
+            }
+        }
+
+        if ($teamId === null) {
+            return [
+                'ok' => true,
+                'msg' => 'ok',
+                'organizationId' => $organization?->id,
+                'teamId' => null,
+            ];
+        }
+
+        $team = Team::query()
+            ->where('tenant_id', $tenantId)
+            ->find($teamId);
+
+        if (! $team) {
+            return [
+                'ok' => false,
+                'msg' => 'Team not found',
+                'organizationId' => null,
+                'teamId' => null,
+            ];
+        }
+
+        if ($organization !== null && (int) $team->organization_id !== (int) $organization->id) {
+            return [
+                'ok' => false,
+                'msg' => 'Team does not belong to selected organization',
+                'organizationId' => null,
+                'teamId' => null,
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'msg' => 'ok',
+            'organizationId' => $organization !== null ? (int) $organization->id : (int) $team->organization_id,
+            'teamId' => $team->id,
+        ];
     }
 }

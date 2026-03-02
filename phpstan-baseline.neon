@@ -103,12 +103,6 @@ parameters:
 			path: app/Domains/Access/Http/Controllers/RoleController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Domains/Access/Http/Controllers/UserManagementController.php
-
-		-
 			message: '#^Offset ''actorLevel'' might not exist on array\{ok\: true, code\: string, msg\: string, user\?\: App\\Domains\\Access\\Models\\User, actorLevel\?\: int, tenantId\?\: int\|null\}\.$#'
 			identifier: offsetAccess.notFound
 			count: 5
@@ -187,37 +181,7 @@ parameters:
 			path: app/Domains/Access/Models/Role.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$permissions\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Domains/Access/Models/User.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Domains/Access/Models/User.php
-
-		-
-			message: '#^Method App\\Domains\\Access\\Models\\User\:\:permissionCodes\(\) should return list\<string\> but returns array\|null\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Domains/Access/Models/User.php
-
-		-
 			message: '#^Method App\\Domains\\Access\\Models\\User\:\:preference\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Domains/Access/Models/User.php
-
-		-
-			message: '#^Method App\\Domains\\Access\\Models\\User\:\:role\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Domains/Access/Models/User.php
-
-		-
-			message: '#^Method App\\Domains\\Access\\Models\\User\:\:tenant\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
 			path: app/Domains/Access/Models/User.php
@@ -329,12 +293,6 @@ parameters:
 			identifier: arrayValues.list
 			count: 1
 			path: app/Domains/Auth/Services/MenuMetadataService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Domains/Shared/Http/Controllers/ApiController.php
 
 		-
 			message: '#^Method App\\Domains\\Shared\\Http\\Controllers\\ApiController\:\:parseOptimisticLockToken\(\) should return int\|null but returns float\|int\|string\.$#'
@@ -781,42 +739,6 @@ parameters:
 			path: app/Domains/Tenant/Models/Tenant.php
 
 		-
-			message: '#^Method App\\Domains\\Tenant\\Models\\Tenant\:\:roles\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Domains/Tenant/Models/Tenant.php
-
-		-
-			message: '#^Method App\\Domains\\Tenant\\Models\\Tenant\:\:users\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Domains/Tenant/Models/Tenant.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Domains/Tenant/Services/TenantContextService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Domains/Tenant/Services/TenantContextService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Domains/Tenant/Services/TenantContextService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Domains/Tenant/Services/TenantContextService.php
-
-		-
 			message: '#^Method App\\Domains\\Tenant\\Services\\TenantContextService\:\:resolveTenantContext\(\) should return array\{ok\: bool, code\: string, msg\: string, tenantId\?\: int\|null, tenantName\?\: string, tenants\?\: list\<array\{tenantId\: string, tenantName\: string\}\>\} but returns array\{ok\: true, code\: ''0000'', msg\: ''ok'', tenantId\: int\|null, tenantName\: string, tenants\: array\<int, array\{tenantId\: string, tenantName\: string\}\>\}\.$#'
 			identifier: return.type
 			count: 1
@@ -853,22 +775,10 @@ parameters:
 			path: app/Http/Requests/Api/Auth/LoginRequest.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Policies/PermissionPolicy.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>code" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Policies/PermissionPolicy.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Policies/TenantPolicy.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>code" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'

@@ -7,6 +7,22 @@
 
 ---
 
+## [1.1.0] - 2026-03-03
+
+### ✨ 新增
+- 新增租户作用域下的 **组织（Organization）** 与 **团队（Team）** 模块，覆盖 CRUD API、DTO、请求校验、策略、服务与资源输出。
+- 用户创建/编辑新增 `organizationId` 与 `teamId` 绑定能力，并增加后端一致性校验。
+- 新增数据库结构：`organizations`、`teams`，以及用户关联字段 `organization_id`、`team_id`。
+
+### 🔧 调整
+- 菜单元数据与路由规则加入 Organization/Team，并按租户作用域严格控制可见性。
+- 默认种子数据新增组织/团队与用户关联关系，开箱即用更接近真实租户模型。
+- 为发版门禁同步更新 API 契约快照与静态分析基线。
+
+### 🐞 修复
+- 修复组织/团队绑定扩展后创建用户 DTO 入参数量不匹配问题。
+- 修复前后端契约漂移：`/role/all` 的 `manageableOnly` 查询与新增 Organization/Team API 面定义。
+
 ## [1.0.0] - 2026-02-23
 
 ### 🎉 首次公开发布 (Obsidian Admin Laravel)

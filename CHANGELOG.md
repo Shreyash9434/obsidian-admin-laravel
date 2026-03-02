@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-03-03
+
+### ✨ Added
+- Tenant-scoped **Organization** and **Team** modules, including CRUD APIs, DTOs, request validation, policies, services, and resources.
+- User creation/update now supports `organizationId` and `teamId` binding with server-side consistency checks.
+- New database schema for `organizations`, `teams`, and user relation fields (`organization_id`, `team_id`).
+
+### 🔧 Changed
+- Menu metadata and route rules now include organization/team entries with strict tenant visibility.
+- Default seed data now includes organization/team records and user bindings.
+- API contract and static-analysis baselines were refreshed for release gate stability.
+
+### 🐞 Fixed
+- Resolved create-user DTO argument mismatch introduced by organization/team binding expansion.
+- Resolved frontend-backend contract drift for role query (`manageableOnly`) and new organization/team API surfaces.
+
 ## [1.0.0] - 2026-02-23
 
 ### 🎉 Initial Public Release (Obsidian Admin Laravel)

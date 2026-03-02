@@ -15,10 +15,14 @@ use App\Domains\System\Models\AuditLog;
 use App\Domains\System\Services\FeatureFlagService;
 use App\Domains\Tenant\Actions\ResolveActiveTenantIdByCodeAction;
 use App\Domains\Tenant\Contracts\ActiveTenantResolver;
+use App\Domains\Tenant\Models\Organization;
+use App\Domains\Tenant\Models\Team;
 use App\Domains\Tenant\Models\Tenant;
 use App\Policies\AuditLogPolicy;
+use App\Policies\OrganizationPolicy;
 use App\Policies\PermissionPolicy;
 use App\Policies\RolePolicy;
+use App\Policies\TeamPolicy;
 use App\Policies\TenantPolicy;
 use App\Policies\UserPolicy;
 use App\Support\ApiDateTime;
@@ -105,6 +109,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Role::class, RolePolicy::class);
         Gate::policy(Permission::class, PermissionPolicy::class);
         Gate::policy(Tenant::class, TenantPolicy::class);
+        Gate::policy(Organization::class, OrganizationPolicy::class);
+        Gate::policy(Team::class, TeamPolicy::class);
         Gate::policy(AuditLog::class, AuditLogPolicy::class);
     }
 

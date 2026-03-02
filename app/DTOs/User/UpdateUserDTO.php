@@ -12,6 +12,8 @@ readonly class UpdateUserDTO
         public ?string $password,
         public string $status,
         public int $roleId,
-        public ?int $tenantId
+        public ?int $tenantId,
+        public ?int $organizationId = null,
+        public ?int $teamId = null,
     ) {}
 }

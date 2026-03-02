@@ -20,6 +20,8 @@ class UpdateUserRequest extends BaseApiRequest
             'userName' => ['required', 'string', 'max:255', Rule::unique('users', 'name')->ignore($userId)],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($userId)],
             'roleCode' => ['required', 'string', 'exists:roles,code'],
+            'organizationId' => ['nullable', 'integer', 'min:1'],
+            'teamId' => ['nullable', 'integer', 'min:1'],
             'status' => ['nullable', 'in:1,2'],
             'password' => ['nullable', 'string', 'max:100'],
             'version' => ['nullable', 'integer', 'min:1'],

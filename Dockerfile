@@ -42,11 +42,13 @@ WORKDIR /var/www/html
 
 COPY --from=vendor /app /var/www/html
 COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint
 
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
-    && chmod -R ug+rwx /var/www/html/storage /var/www/html/bootstrap/cache
+    && chmod -R ug+rwx /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod +x /usr/local/bin/entrypoint
 
 EXPOSE 9000
 
+ENTRYPOINT ["/usr/local/bin/entrypoint"]
 CMD ["php-fpm", "-F"]
-

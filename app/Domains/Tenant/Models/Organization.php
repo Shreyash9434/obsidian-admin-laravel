@@ -4,24 +4,28 @@ declare(strict_types=1);
 
 namespace App\Domains\Tenant\Models;
 
-use App\Domains\Access\Models\Role;
 use App\Domains\Access\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Tenant extends Model
+class Organization extends Model
 {
+    /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
     use HasFactory, SoftDeletes;
 
     /**
      * @var list<string>
      */
     protected $fillable = [
+        'tenant_id',
         'code',
         'name',
+        'description',
         'status',
+        'sort',
     ];
 
     /**
@@ -30,33 +34,19 @@ class Tenant extends Model
     protected function casts(): array
     {
         return [
+            'tenant_id' => 'integer',
+            'sort' => 'integer',
             'status' => 'string',
             'deleted_at' => 'datetime',
         ];
     }
 
     /**
-     * @return HasMany<User, $this>
+     * @return BelongsTo<Tenant, $this>
      */
-    public function users(): HasMany
+    public function tenant(): BelongsTo
     {
-        return $this->hasMany(User::class);
-    }
-
-    /**
-     * @return HasMany<Role, $this>
-     */
-    public function roles(): HasMany
-    {
-        return $this->hasMany(Role::class);
-    }
-
-    /**
-     * @return HasMany<Organization, $this>
-     */
-    public function organizations(): HasMany
-    {
-        return $this->hasMany(Organization::class);
+        return $this->belongsTo(Tenant::class);
     }
 
     /**
@@ -65,5 +55,13 @@ class Tenant extends Model
     public function teams(): HasMany
     {
         return $this->hasMany(Team::class);
+    }
+
+    /**
+     * @return HasMany<User, $this>
+     */
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
     }
 }

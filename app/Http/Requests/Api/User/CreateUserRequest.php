@@ -17,6 +17,8 @@ class CreateUserRequest extends BaseApiRequest
             'userName' => ['required', 'string', 'max:255', 'unique:users,name'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'roleCode' => ['required', 'string', 'exists:roles,code'],
+            'organizationId' => ['nullable', 'integer', 'min:1'],
+            'teamId' => ['nullable', 'integer', 'min:1'],
             'status' => ['nullable', 'in:1,2'],
             'password' => ['required', 'string', 'max:100'],
         ];

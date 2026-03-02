@@ -22,6 +22,8 @@ class MenuMetadataService
         'dashboard' => 'route.dashboard',
         'tenant' => 'route.tenant',
         'user' => 'route.user',
+        'organization' => 'route.organization',
+        'team' => 'route.team',
         'role' => 'route.role',
         'audit' => 'route.audit',
         'audit-policy' => 'route.audit-policy',

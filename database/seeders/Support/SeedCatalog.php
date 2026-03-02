@@ -29,6 +29,73 @@ final class SeedCatalog
     }
 
     /**
+     * @return list<array{
+     *   tenantCode: string,
+     *   code: string,
+     *   name: string,
+     *   status: string,
+     *   sort: int
+     * }>
+     */
+    public static function organizations(): array
+    {
+        return [
+            ['tenantCode' => 'TENANT_MAIN', 'code' => 'ORG_MAIN_HQ', 'name' => 'Main HQ', 'status' => '1', 'sort' => 10],
+            ['tenantCode' => 'TENANT_MAIN', 'code' => 'ORG_MAIN_RETAIL', 'name' => 'Main Retail', 'status' => '1', 'sort' => 20],
+            ['tenantCode' => 'TENANT_BRANCH', 'code' => 'ORG_BRANCH_HQ', 'name' => 'Branch HQ', 'status' => '1', 'sort' => 10],
+            ['tenantCode' => 'TENANT_BRANCH', 'code' => 'ORG_BRANCH_RETAIL', 'name' => 'Branch Retail', 'status' => '1', 'sort' => 20],
+        ];
+    }
+
+    /**
+     * @return list<array{
+     *   tenantCode: string,
+     *   organizationCode: string,
+     *   code: string,
+     *   name: string,
+     *   status: string,
+     *   sort: int
+     * }>
+     */
+    public static function teams(): array
+    {
+        return [
+            [
+                'tenantCode' => 'TENANT_MAIN',
+                'organizationCode' => 'ORG_MAIN_HQ',
+                'code' => 'TEAM_MAIN_PLATFORM',
+                'name' => 'Main Platform Team',
+                'status' => '1',
+                'sort' => 10,
+            ],
+            [
+                'tenantCode' => 'TENANT_MAIN',
+                'organizationCode' => 'ORG_MAIN_RETAIL',
+                'code' => 'TEAM_MAIN_RETAIL_SALES',
+                'name' => 'Main Retail Sales Team',
+                'status' => '1',
+                'sort' => 10,
+            ],
+            [
+                'tenantCode' => 'TENANT_BRANCH',
+                'organizationCode' => 'ORG_BRANCH_HQ',
+                'code' => 'TEAM_BRANCH_PLATFORM',
+                'name' => 'Branch Platform Team',
+                'status' => '1',
+                'sort' => 10,
+            ],
+            [
+                'tenantCode' => 'TENANT_BRANCH',
+                'organizationCode' => 'ORG_BRANCH_RETAIL',
+                'code' => 'TEAM_BRANCH_RETAIL_SALES',
+                'name' => 'Branch Retail Sales Team',
+                'status' => '1',
+                'sort' => 10,
+            ],
+        ];
+    }
+
+    /**
      * @return list<array{code: string, name: string, group: string, status: string}>
      */
     public static function permissions(): array
@@ -36,6 +103,10 @@ final class SeedCatalog
         return [
             ['code' => 'user.view', 'name' => 'View Users', 'group' => 'user', 'status' => '1'],
             ['code' => 'user.manage', 'name' => 'Manage Users', 'group' => 'user', 'status' => '1'],
+            ['code' => 'organization.view', 'name' => 'View Organizations', 'group' => 'organization', 'status' => '1'],
+            ['code' => 'organization.manage', 'name' => 'Manage Organizations', 'group' => 'organization', 'status' => '1'],
+            ['code' => 'team.view', 'name' => 'View Teams', 'group' => 'team', 'status' => '1'],
+            ['code' => 'team.manage', 'name' => 'Manage Teams', 'group' => 'team', 'status' => '1'],
             ['code' => 'role.view', 'name' => 'View Roles', 'group' => 'role', 'status' => '1'],
             ['code' => 'role.manage', 'name' => 'Manage Roles', 'group' => 'role', 'status' => '1'],
             ['code' => 'audit.view', 'name' => 'View Audit Logs', 'group' => 'audit', 'status' => '1'],
@@ -122,7 +193,9 @@ final class SeedCatalog
      *   password: string,
      *   status: string,
      *   roleCode: string,
-     *   tenantCode: string|null
+     *   tenantCode: string|null,
+     *   organizationCode: string|null,
+     *   teamCode: string|null
      * }>
      */
     public static function users(): array
@@ -135,6 +208,8 @@ final class SeedCatalog
                 'status' => '1',
                 'roleCode' => 'R_SUPER',
                 'tenantCode' => null,
+                'organizationCode' => null,
+                'teamCode' => null,
             ],
             [
                 'name' => 'Admin',
@@ -143,6 +218,8 @@ final class SeedCatalog
                 'status' => '1',
                 'roleCode' => 'R_ADMIN',
                 'tenantCode' => 'TENANT_MAIN',
+                'organizationCode' => 'ORG_MAIN_HQ',
+                'teamCode' => 'TEAM_MAIN_PLATFORM',
             ],
             [
                 'name' => 'AdminBranch',
@@ -151,6 +228,8 @@ final class SeedCatalog
                 'status' => '1',
                 'roleCode' => 'R_ADMIN',
                 'tenantCode' => 'TENANT_BRANCH',
+                'organizationCode' => 'ORG_BRANCH_HQ',
+                'teamCode' => 'TEAM_BRANCH_PLATFORM',
             ],
             [
                 'name' => 'User',
@@ -159,6 +238,8 @@ final class SeedCatalog
                 'status' => '1',
                 'roleCode' => 'R_USER',
                 'tenantCode' => 'TENANT_MAIN',
+                'organizationCode' => 'ORG_MAIN_RETAIL',
+                'teamCode' => 'TEAM_MAIN_RETAIL_SALES',
             ],
             [
                 'name' => 'UserBranch',
@@ -167,6 +248,8 @@ final class SeedCatalog
                 'status' => '1',
                 'roleCode' => 'R_USER',
                 'tenantCode' => 'TENANT_BRANCH',
+                'organizationCode' => 'ORG_BRANCH_RETAIL',
+                'teamCode' => 'TEAM_BRANCH_RETAIL_SALES',
             ],
         ];
     }

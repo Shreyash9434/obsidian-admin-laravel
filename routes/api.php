@@ -7,6 +7,7 @@ $registerModules = [
     require __DIR__.'/api/user.php',
     require __DIR__.'/api/access.php',
     require __DIR__.'/api/tenant.php',
+    require __DIR__.'/api/organization.php',
     require __DIR__.'/api/system.php',
 ];
 

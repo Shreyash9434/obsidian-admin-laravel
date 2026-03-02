@@ -121,6 +121,7 @@ Obsidian continues to evolve — rooted in resilience and order, marching steadf
 - **Platform + Tenant dual scope** (`No Tenant` platform scope and tenant-selected scope).
 - **Tenant context resolution** with centralized `X-Tenant-Id` handling and super admin tenant switching rules.
 - **Tenant safety boundaries** enforced through backend scope checks, database constraints, and cross-tenant tests.
+- **Tenant -> Organization -> Team model support** with user organization/team binding and strict backend consistency checks (team belongs to organization and tenant scope).
 - **RBAC (single user, single role)** with backend permission guards and frontend route/menu integration.
 - **Role Level governance** to prevent same-level and higher-level management operations.
 - **Permission grouping support** derived from permission code prefixes (e.g. `permission.view` -> `permission`).
@@ -168,11 +169,6 @@ Obsidian continues to evolve — rooted in resilience and order, marching steadf
 
 This backend is designed to pair perfectly with the following frontend:
 - **[Obsidian Admin Vue](https://github.com/obsidianlabs-io/obsidian-admin-vue)**: A clean, elegant administrative interface based on Vue3, Vite, NaiveUI, and TypeScript (Derived from Soybean Admin).
-
-## Version
-
-- **Laravel Version**: 12.x
-- **PHP Version**: 8.2+
 
 ## Usage
 

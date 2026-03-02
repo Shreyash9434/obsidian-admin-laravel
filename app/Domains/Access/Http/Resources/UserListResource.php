@@ -30,6 +30,9 @@ class UserListResource extends JsonResource
             $roleLevel = max(0, (int) $role->level);
         }
 
+        $organizationName = $this->organization?->getAttribute('name');
+        $teamName = $this->team?->getAttribute('name');
+
         return [
             'id' => $this->id,
             'userName' => $this->name,
@@ -37,6 +40,10 @@ class UserListResource extends JsonResource
             'roleCode' => $roleCode,
             'roleName' => $roleName,
             'roleLevel' => $roleLevel > 0 ? $roleLevel : null,
+            'organizationId' => $this->organization_id ? (string) $this->organization_id : null,
+            'organizationName' => is_string($organizationName) && $organizationName !== '' ? $organizationName : null,
+            'teamId' => $this->team_id ? (string) $this->team_id : null,
+            'teamName' => is_string($teamName) && $teamName !== '' ? $teamName : null,
             'status' => in_array((string) $this->status, ['1', '2'], true) ? (string) $this->status : '1',
             'manageable' => $actorRoleLevel > 0 && $roleLevel < $actorRoleLevel,
             'version' => (string) ($this->updated_at?->copy()->setTimezone('UTC')->timestamp ?? 0),
