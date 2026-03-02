@@ -6,8 +6,8 @@ namespace App\Domains\Access\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Domains\Tenant\Models\Organization;
-use App\Domains\Tenant\Models\Tenant;
 use App\Domains\Tenant\Models\Team;
+use App\Domains\Tenant\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;

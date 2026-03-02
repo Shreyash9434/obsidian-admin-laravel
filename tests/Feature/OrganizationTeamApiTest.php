@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Domains\Tenant\Models\Organization;
-use App\Domains\Tenant\Models\Tenant;
 use App\Domains\Tenant\Models\Team;
+use App\Domains\Tenant\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
