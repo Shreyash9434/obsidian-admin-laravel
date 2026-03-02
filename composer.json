@@ -10,24 +10,19 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "bacon/bacon-qr-code": "^3.0",
         "dedoc/scramble": "^0.13.14",
         "laravel/framework": "^12.0",
         "laravel/horizon": "^5.44",
         "laravel/pennant": "^1.19",
         "laravel/pulse": "^1.5",
         "laravel/reverb": "^1.0",
-        "laravel/sanctum": "^4.3",
-        "laravel/tinker": "^2.10.1",
-        "pragmarx/google2fa": "^9.0"
+        "laravel/sanctum": "^4.3"
     },
     "require-dev": {
         "deptrac/deptrac": "^4.6",
         "fakerphp/faker": "^1.23",
         "larastan/larastan": "^3.9",
-        "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.24",
-        "laravel/sail": "^1.41",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^3.8.5",
