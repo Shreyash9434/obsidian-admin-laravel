@@ -23,7 +23,7 @@ return [
         'audit' => env('MENU_FEATURE_AUDIT', true),
         'auditPolicy' => env('MENU_FEATURE_AUDIT_POLICY', true),
         'language' => env('MENU_FEATURE_LANGUAGE', true),
-        'theme' => env('MENU_FEATURE_THEME', true),
+        'themeConfig' => env('MENU_FEATURE_THEME_CONFIG', env('MENU_FEATURE_THEME', true)),
     ],
 
     /*
@@ -194,7 +194,7 @@ return [
                     'icon' => 'mdi:palette-outline',
                     'order' => 1,
                     'scope' => 'platform',
-                    'featureFlag' => 'theme',
+                    'featureFlag' => 'themeConfig',
                     'permission' => 'theme.view',
                     'roles' => ['R_SUPER'],
                     'children' => [],

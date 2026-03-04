@@ -16,19 +16,25 @@ class FeatureFlagApiTest extends TestCase
         $this->seed();
         $token = $this->loginAndGetToken('Super');
 
-        $response = $this->getJson('/api/system/feature-flags?current=1&size=5', [
+        $response = $this->getJson('/api/system/feature-flags?current=1&size=50&keyword=themeConfig', [
             'Authorization' => 'Bearer '.$token,
         ]);
 
         $response->assertOk()
             ->assertJsonPath('code', '0000')
             ->assertJsonPath('data.current', 1)
-            ->assertJsonPath('data.size', 5);
+            ->assertJsonPath('data.size', 50);
 
         $records = $response->json('data.records');
         $this->assertIsArray($records);
         $this->assertNotEmpty($records);
         $this->assertArrayHasKey('key', $records[0]);
+
+        $keys = array_values(array_map(
+            static fn (array $record): string => (string) ($record['key'] ?? ''),
+            $records
+        ));
+        $this->assertContains('menu.themeConfig', $keys);
     }
 
     public function test_feature_flag_can_toggle_and_purge_global_override(): void

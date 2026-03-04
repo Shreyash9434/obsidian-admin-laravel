@@ -65,11 +65,14 @@ return [
             'role_codes' => ['R_SUPER'],
             'percentage' => (int) env('FF_MENU_LANGUAGE_PERCENTAGE', 100),
         ],
-        'menu.theme' => [
-            'enabled' => filter_var(env('FF_MENU_THEME', env('MENU_FEATURE_THEME', true)), FILTER_VALIDATE_BOOLEAN),
+        'menu.themeConfig' => [
+            'enabled' => filter_var(
+                env('FF_MENU_THEME_CONFIG', env('FF_MENU_THEME', env('MENU_FEATURE_THEME_CONFIG', env('MENU_FEATURE_THEME', true)))),
+                FILTER_VALIDATE_BOOLEAN
+            ),
             'platform_only' => true,
             'role_codes' => ['R_SUPER'],
-            'percentage' => (int) env('FF_MENU_THEME_PERCENTAGE', 100),
+            'percentage' => (int) env('FF_MENU_THEME_CONFIG_PERCENTAGE', env('FF_MENU_THEME_PERCENTAGE', 100)),
         ],
         'menu.featureFlags' => [
             'enabled' => filter_var(env('FF_MENU_FEATURE_FLAGS', env('MENU_FEATURE_FEATURE_FLAGS', true)), FILTER_VALIDATE_BOOLEAN),
