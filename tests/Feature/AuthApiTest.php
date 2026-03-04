@@ -83,6 +83,23 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('code', '8888');
     }
 
+    public function test_tenant_user_cannot_login_when_tenant_is_inactive(): void
+    {
+        $this->seed();
+
+        $mainTenant = Tenant::query()->where('code', 'TENANT_MAIN')->firstOrFail();
+        $mainTenant->forceFill(['status' => '2'])->save();
+
+        $response = $this->postJson('/api/auth/login', [
+            'userName' => 'Admin',
+            'password' => '123456',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('code', '8888')
+            ->assertJsonPath('msg', 'Tenant is inactive');
+    }
+
     public function test_login_is_rate_limited_after_consecutive_failed_attempts(): void
     {
         $this->seed();
@@ -685,6 +702,31 @@ class AuthApiTest extends TestCase
                 'msg',
                 'data' => ['token', 'refreshToken'],
             ]);
+    }
+
+    public function test_refresh_token_is_rejected_when_tenant_becomes_inactive(): void
+    {
+        $this->seed();
+
+        $loginResponse = $this->postJson('/api/auth/login', [
+            'userName' => 'Admin',
+            'password' => '123456',
+        ]);
+        $refreshToken = (string) $loginResponse->json('data.refreshToken');
+        $this->assertNotNull(PersonalAccessToken::findToken($refreshToken));
+
+        $mainTenant = Tenant::query()->where('code', 'TENANT_MAIN')->firstOrFail();
+        $mainTenant->forceFill(['status' => '2'])->save();
+
+        $response = $this->postJson('/api/auth/refreshToken', [
+            'refreshToken' => $refreshToken,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('code', '8888')
+            ->assertJsonPath('msg', 'Tenant is inactive');
+
+        $this->assertNull(PersonalAccessToken::findToken($refreshToken));
     }
 
     public function test_authenticated_user_can_list_auth_sessions(): void

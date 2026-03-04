@@ -127,6 +127,12 @@ class AuthSessionController extends ApiController
             return $this->error(self::UNAUTHORIZED_CODE, 'User is inactive');
         }
 
+        if ($this->isTenantUserWithInactiveTenant($user)) {
+            $this->incrementLoginAttempts($throttleKey);
+
+            return $this->error(self::UNAUTHORIZED_CODE, 'Tenant is inactive');
+        }
+
         if ((bool) config('security.require_email_verification', false) && ! $user->email_verified_at) {
             $this->incrementLoginAttempts($throttleKey);
 
@@ -191,6 +197,12 @@ class AuthSessionController extends ApiController
         $tokenable = $token->tokenable;
         if (! $tokenable instanceof User || $tokenable->status !== '1') {
             return $this->error(self::UNAUTHORIZED_CODE, 'Refresh token is invalid');
+        }
+
+        if ($this->isTenantUserWithInactiveTenant($tokenable)) {
+            $token->delete();
+
+            return $this->error(self::UNAUTHORIZED_CODE, 'Tenant is inactive');
         }
 
         $sessionClientContext = $this->authTokenService->resolveSessionClientContextMetadata($token);
@@ -407,5 +419,21 @@ class AuthSessionController extends ApiController
     private function resolveAuthenticatedUser(Request $request): ApiAuthResult
     {
         return $this->authenticate($request, 'access-api');
+    }
+
+    private function isTenantUserWithInactiveTenant(User $user): bool
+    {
+        $tenantId = $user->tenant_id ? (int) $user->tenant_id : 0;
+        if ($tenantId <= 0) {
+            return false;
+        }
+
+        $user->loadMissing('tenant:id,status');
+
+        if (! $user->tenant) {
+            return true;
+        }
+
+        return (string) $user->tenant->status !== '1';
     }
 }
