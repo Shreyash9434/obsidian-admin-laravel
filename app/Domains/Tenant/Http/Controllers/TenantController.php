@@ -190,33 +190,59 @@ class TenantController extends ApiController
             return $this->error($authResult->code(), $authResult->message());
         }
 
-        $tenant = $this->resolveTenant($id, ['users', 'roles']);
+        $tenant = $this->resolveTenant($id, ['users', 'roles', 'organizations', 'teams']);
         if (! $tenant instanceof Tenant) {
             return $this->tenantNotFoundResponse();
-        }
-
-        if (($tenant->users_count ?? 0) > 0) {
-            return $this->error(self::PARAM_ERROR_CODE, 'Tenant has assigned users');
-        }
-
-        if (($tenant->roles_count ?? 0) > 0) {
-            return $this->error(self::PARAM_ERROR_CODE, 'Tenant has assigned roles');
         }
 
         $user = $authResult->requireUser();
 
         $oldValues = $this->tenantSnapshot($tenant);
 
+        if ((string) $tenant->status === '1') {
+            $tenant->forceFill(['status' => '2'])->save();
+            $this->apiCacheService->bump('tenants');
+
+            $this->auditLogService->record(
+                action: 'tenant.deactivate',
+                auditable: $tenant,
+                actor: $user,
+                request: $request,
+                oldValues: $oldValues,
+                newValues: $this->tenantSnapshot($tenant)
+            );
+
+            return $this->deletionActionSuccess('tenant', (int) $tenant->id, 'deactivated', 'Tenant deactivated');
+        }
+
+        $assignedUsers = (int) ($tenant->users_count ?? 0);
+        $assignedRoles = (int) ($tenant->roles_count ?? 0);
+        $assignedOrganizations = (int) ($tenant->organizations_count ?? 0);
+        $assignedTeams = (int) ($tenant->teams_count ?? 0);
+        if ($assignedUsers > 0 || $assignedRoles > 0 || $assignedOrganizations > 0 || $assignedTeams > 0) {
+            return $this->deleteConflict(
+                resource: 'tenant',
+                resourceId: (int) $tenant->id,
+                dependencies: [
+                    'users' => $assignedUsers,
+                    'roles' => $assignedRoles,
+                    'organizations' => $assignedOrganizations,
+                    'teams' => $assignedTeams,
+                ],
+                suggestedAction: 'clean_tenant_dependencies_then_retry'
+            );
+        }
+
         ($this->deleteTenantAction)($tenant);
         $this->auditLogService->record(
-            action: 'tenant.delete',
+            action: 'tenant.soft_delete',
             auditable: $tenant,
             actor: $user,
             request: $request,
             oldValues: $oldValues
         );
 
-        return $this->success([], 'Tenant deleted');
+        return $this->deletionActionSuccess('tenant', (int) $id, 'soft_deleted', 'Tenant deleted');
     }
 
     private function resolveTenantConsoleContext(Request $request, string $permissionCode): ApiAuthResult

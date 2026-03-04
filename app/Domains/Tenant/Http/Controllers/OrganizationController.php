@@ -231,20 +231,48 @@ class OrganizationController extends ApiController
             return $this->organizationScopeErrorResponse($id);
         }
 
-        if ((int) ($organization->teams_count ?? 0) > 0) {
-            return $this->error(self::PARAM_ERROR_CODE, 'Organization has assigned teams');
-        }
-
-        if ((int) ($organization->users_count ?? 0) > 0) {
-            return $this->error(self::PARAM_ERROR_CODE, 'Organization has assigned users');
-        }
-
         $oldValues = $this->organizationSnapshot($organization);
+
+        if ((string) $organization->status === '1') {
+            $organization->forceFill(['status' => '2'])->save();
+            $this->apiCacheService->bump('organizations');
+
+            $this->auditLogService->record(
+                action: 'organization.deactivate',
+                auditable: $organization,
+                actor: $user,
+                request: $request,
+                oldValues: $oldValues,
+                newValues: $this->organizationSnapshot($organization),
+                tenantId: $tenantId,
+            );
+
+            return $this->deletionActionSuccess(
+                'organization',
+                (int) $organization->id,
+                'deactivated',
+                'Organization deactivated'
+            );
+        }
+
+        $assignedTeams = (int) ($organization->teams_count ?? 0);
+        $assignedUsers = (int) ($organization->users_count ?? 0);
+        if ($assignedTeams > 0 || $assignedUsers > 0) {
+            return $this->deleteConflict(
+                resource: 'organization',
+                resourceId: (int) $organization->id,
+                dependencies: [
+                    'teams' => $assignedTeams,
+                    'users' => $assignedUsers,
+                ],
+                suggestedAction: 'reassign_teams_and_users_then_retry'
+            );
+        }
 
         $this->organizationService->delete($organization);
 
         $this->auditLogService->record(
-            action: 'organization.delete',
+            action: 'organization.soft_delete',
             auditable: $organization,
             actor: $user,
             request: $request,
@@ -252,7 +280,7 @@ class OrganizationController extends ApiController
             tenantId: $tenantId,
         );
 
-        return $this->success([], 'Organization deleted');
+        return $this->deletionActionSuccess('organization', (int) $id, 'soft_deleted', 'Organization deleted');
     }
 
     private function validateTenantUniqueness(int $tenantId, string $code, string $name, ?int $ignoreId = null): ?string

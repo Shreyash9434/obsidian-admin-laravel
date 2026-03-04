@@ -46,3 +46,4 @@ Controller imports in route modules point to domain controllers under `App\Domai
 - Keep idempotency only on mutation endpoints.
 - Keep audit logging asynchronous where possible.
 - Keep API contract snapshot and OpenAPI route tests as CI gates.
+- Keep deletion lifecycle rules centralized in `docs/deletion-governance.md`.

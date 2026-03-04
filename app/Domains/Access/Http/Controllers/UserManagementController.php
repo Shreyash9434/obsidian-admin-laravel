@@ -381,9 +381,29 @@ class UserManagementController extends AbstractUserController
             'email' => $user->email,
             'status' => (string) $user->status,
         ];
+
+        if ((string) $user->status === '1') {
+            $this->userService->deactivate($user);
+            $this->auditLogService->record(
+                action: 'user.deactivate',
+                auditable: $user,
+                actor: $authUser,
+                request: $request,
+                oldValues: $oldValues,
+                newValues: [
+                    'userName' => $user->name,
+                    'email' => $user->email,
+                    'status' => (string) $user->status,
+                ],
+                tenantId: $user->tenant_id ? (int) $user->tenant_id : null
+            );
+
+            return $this->deletionActionSuccess('user', (int) $user->id, 'deactivated', 'User deactivated');
+        }
+
         $this->userService->delete($user);
         $this->auditLogService->record(
-            action: 'user.delete',
+            action: 'user.soft_delete',
             auditable: $user,
             actor: $authUser,
             request: $request,
@@ -391,7 +411,7 @@ class UserManagementController extends AbstractUserController
             tenantId: $user->tenant_id ? (int) $user->tenant_id : null
         );
 
-        return $this->success([], 'User deleted');
+        return $this->deletionActionSuccess('user', (int) $id, 'soft_deleted', 'User deleted');
     }
 
     private function resolveRoleCode(User $user): string

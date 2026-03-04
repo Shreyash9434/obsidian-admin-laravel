@@ -14,6 +14,9 @@ return [
     'auth_tokens' => [
         'single_device_login' => filter_var(env('AUTH_SINGLE_DEVICE_LOGIN', true), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? true,
     ],
+    'deletion' => [
+        'retention_days' => (int) env('DELETION_RETENTION_DAYS', 30),
+    ],
     'proxy_trust' => [
         'proxies' => (string) env('TRUSTED_PROXIES', 'REMOTE_ADDR'),
         'headers' => (string) env('TRUSTED_PROXY_HEADERS', 'DEFAULT'),

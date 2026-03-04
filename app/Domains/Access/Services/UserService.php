@@ -66,6 +66,19 @@ class UserService
         $this->apiCacheService->bump('users');
     }
 
+    public function deactivate(User $user): User
+    {
+        $user->tokens()->delete();
+
+        if ((string) $user->status !== '2') {
+            $user->forceFill(['status' => '2'])->save();
+        }
+
+        $this->apiCacheService->bump('users');
+
+        return $user;
+    }
+
     public function assignRole(User $user, Role $role): User
     {
         $user->forceFill(['role_id' => $role->id])->save();

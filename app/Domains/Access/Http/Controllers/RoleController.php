@@ -415,10 +415,6 @@ class RoleController extends ApiController
             return $this->error(self::FORBIDDEN_CODE, 'Super role cannot be deleted');
         }
 
-        if (($role->users_count ?? 0) > 0) {
-            return $this->error(self::PARAM_ERROR_CODE, 'Role has assigned users');
-        }
-
         $oldValues = [
             'roleCode' => $role->code,
             'roleName' => $role->name,
@@ -426,9 +422,46 @@ class RoleController extends ApiController
             'status' => (string) $role->status,
         ];
 
+        if ((string) $role->status === '1') {
+            $this->roleService->update($role, [
+                'code' => (string) $role->code,
+                'name' => (string) $role->name,
+                'description' => (string) ($role->description ?? ''),
+                'status' => '2',
+                'level' => (int) ($role->level ?? self::DEFAULT_ROLE_LEVEL),
+            ]);
+
+            $this->auditLogService->record(
+                action: 'role.deactivate',
+                auditable: $role,
+                actor: $user,
+                request: $request,
+                oldValues: $oldValues,
+                newValues: [
+                    'roleCode' => (string) $role->code,
+                    'roleName' => (string) $role->name,
+                    'tenantId' => $role->tenant_id ? (int) $role->tenant_id : null,
+                    'status' => (string) $role->status,
+                ],
+                tenantId: $role->tenant_id ? (int) $role->tenant_id : null
+            );
+
+            return $this->deletionActionSuccess('role', (int) $role->id, 'deactivated', 'Role deactivated');
+        }
+
+        $assignedUsers = (int) ($role->users_count ?? 0);
+        if ($assignedUsers > 0) {
+            return $this->deleteConflict(
+                resource: 'role',
+                resourceId: (int) $role->id,
+                dependencies: ['users' => $assignedUsers],
+                suggestedAction: 'reassign_users_then_retry'
+            );
+        }
+
         $this->roleService->delete($role);
         $this->auditLogService->record(
-            action: 'role.delete',
+            action: 'role.soft_delete',
             auditable: $role,
             actor: $user,
             request: $request,
@@ -436,7 +469,7 @@ class RoleController extends ApiController
             tenantId: $role->tenant_id ? (int) $role->tenant_id : null
         );
 
-        return $this->success([], 'Role deleted');
+        return $this->deletionActionSuccess('role', (int) $id, 'soft_deleted', 'Role deleted');
     }
 
     public function syncPermissions(SyncRolePermissionsRequest $request, int $id): JsonResponse

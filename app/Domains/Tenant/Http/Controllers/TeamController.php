@@ -259,16 +259,39 @@ class TeamController extends ApiController
             return $this->teamScopeErrorResponse($id);
         }
 
-        if ((int) ($team->users_count ?? 0) > 0) {
-            return $this->error(self::PARAM_ERROR_CODE, 'Team has assigned users');
+        $oldValues = $this->teamSnapshot($team);
+
+        if ((string) $team->status === '1') {
+            $team->forceFill(['status' => '2'])->save();
+            $this->apiCacheService->bump('teams');
+
+            $this->auditLogService->record(
+                action: 'team.deactivate',
+                auditable: $team,
+                actor: $user,
+                request: $request,
+                oldValues: $oldValues,
+                newValues: $this->teamSnapshot($team),
+                tenantId: $tenantId,
+            );
+
+            return $this->deletionActionSuccess('team', (int) $team->id, 'deactivated', 'Team deactivated');
         }
 
-        $oldValues = $this->teamSnapshot($team);
+        $assignedUsers = (int) ($team->users_count ?? 0);
+        if ($assignedUsers > 0) {
+            return $this->deleteConflict(
+                resource: 'team',
+                resourceId: (int) $team->id,
+                dependencies: ['users' => $assignedUsers],
+                suggestedAction: 'reassign_users_then_retry'
+            );
+        }
 
         $this->teamService->delete($team);
 
         $this->auditLogService->record(
-            action: 'team.delete',
+            action: 'team.soft_delete',
             auditable: $team,
             actor: $user,
             request: $request,
@@ -276,7 +299,7 @@ class TeamController extends ApiController
             tenantId: $tenantId,
         );
 
-        return $this->success([], 'Team deleted');
+        return $this->deletionActionSuccess('team', (int) $id, 'soft_deleted', 'Team deleted');
     }
 
     private function organizationExistsInTenant(int $tenantId, int $organizationId): bool

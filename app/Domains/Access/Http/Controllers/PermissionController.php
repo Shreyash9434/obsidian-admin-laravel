@@ -210,22 +210,50 @@ class PermissionController extends ApiController
             return $this->permissionNotFoundResponse();
         }
 
-        if (($permission->roles_count ?? 0) > 0) {
-            return $this->error(self::PARAM_ERROR_CODE, 'Permission is assigned to roles');
-        }
         $user = $authResult->requireUser();
         $oldValues = $this->permissionSnapshot($permission);
 
+        if ((string) $permission->status === '1') {
+            $permission = $this->permissionService->update($permission, [
+                'code' => (string) $permission->code,
+                'name' => (string) $permission->name,
+                'group' => (string) ($permission->group ?? ''),
+                'description' => (string) ($permission->description ?? ''),
+                'status' => '2',
+            ]);
+
+            $this->auditLogService->record(
+                action: 'permission.deactivate',
+                auditable: $permission,
+                actor: $user,
+                request: $request,
+                oldValues: $oldValues,
+                newValues: $this->permissionSnapshot($permission)
+            );
+
+            return $this->deletionActionSuccess('permission', (int) $permission->id, 'deactivated', 'Permission deactivated');
+        }
+
+        $assignedRoles = (int) ($permission->roles_count ?? 0);
+        if ($assignedRoles > 0) {
+            return $this->deleteConflict(
+                resource: 'permission',
+                resourceId: (int) $permission->id,
+                dependencies: ['roles' => $assignedRoles],
+                suggestedAction: 'detach_roles_then_retry'
+            );
+        }
+
         $this->permissionService->delete($permission);
         $this->auditLogService->record(
-            action: 'permission.delete',
+            action: 'permission.soft_delete',
             auditable: $permission,
             actor: $user,
             request: $request,
             oldValues: $oldValues
         );
 
-        return $this->success([], 'Permission deleted');
+        return $this->deletionActionSuccess('permission', (int) $id, 'soft_deleted', 'Permission deleted');
     }
 
     private function resolvePermissionConsoleContext(Request $request, string $permissionCode): ApiAuthResult

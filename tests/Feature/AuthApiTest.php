@@ -1935,6 +1935,50 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('code', '0000');
     }
 
+    public function test_active_tenant_delete_request_deactivates_before_soft_delete(): void
+    {
+        $this->seed();
+
+        $token = (string) $this->postJson('/api/auth/login', [
+            'userName' => 'Super',
+            'password' => '123456',
+        ])->json('data.token');
+
+        $createResponse = $this->postJson('/api/tenant', [
+            'tenantCode' => 'TENANT_DELETE_FLOW',
+            'tenantName' => 'Tenant Delete Flow',
+            'status' => '1',
+        ], [
+            'Authorization' => 'Bearer '.$token,
+        ]);
+
+        $tenantId = (int) $createResponse->json('data.id');
+
+        $firstDeleteResponse = $this->deleteJson('/api/tenant/'.$tenantId, [], [
+            'Authorization' => 'Bearer '.$token,
+        ]);
+        $firstDeleteResponse->assertOk()
+            ->assertJsonPath('code', '0000')
+            ->assertJsonPath('data.action', 'deactivated');
+
+        $this->assertDatabaseHas('tenants', [
+            'id' => $tenantId,
+            'status' => '2',
+            'deleted_at' => null,
+        ]);
+
+        $secondDeleteResponse = $this->deleteJson('/api/tenant/'.$tenantId, [], [
+            'Authorization' => 'Bearer '.$token,
+        ]);
+        $secondDeleteResponse->assertOk()
+            ->assertJsonPath('code', '0000')
+            ->assertJsonPath('data.action', 'soft_deleted');
+
+        $this->assertSoftDeleted('tenants', [
+            'id' => $tenantId,
+        ]);
+    }
+
     public function test_assigning_role_to_user_keeps_single_role(): void
     {
         $this->seed();
@@ -2072,6 +2116,129 @@ class AuthApiTest extends TestCase
         $this->assertSoftDeleted('users', [
             'id' => $createdUserId,
         ]);
+    }
+
+    public function test_active_user_delete_request_deactivates_before_soft_delete(): void
+    {
+        $this->seed();
+
+        $token = (string) $this->postJson('/api/auth/login', [
+            'userName' => 'Super',
+            'password' => '123456',
+        ])->json('data.token');
+
+        $mainTenant = Tenant::query()->where('code', 'TENANT_MAIN')->firstOrFail();
+
+        $createResponse = $this->postJson('/api/user', [
+            'userName' => 'DeleteFlowUser',
+            'email' => 'delete.flow.user@obsidian.local',
+            'roleCode' => 'R_USER',
+            'status' => '1',
+            'password' => 'DeleteFlow123',
+        ], [
+            'Authorization' => 'Bearer '.$token,
+            'X-Tenant-Id' => (string) $mainTenant->id,
+        ]);
+
+        $userId = (int) $createResponse->json('data.userId');
+
+        $firstDeleteResponse = $this->deleteJson('/api/user/'.$userId, [], [
+            'Authorization' => 'Bearer '.$token,
+            'X-Tenant-Id' => (string) $mainTenant->id,
+        ]);
+        $firstDeleteResponse->assertOk()
+            ->assertJsonPath('code', '0000')
+            ->assertJsonPath('data.action', 'deactivated');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $userId,
+            'status' => '2',
+            'deleted_at' => null,
+        ]);
+
+        $secondDeleteResponse = $this->deleteJson('/api/user/'.$userId, [], [
+            'Authorization' => 'Bearer '.$token,
+            'X-Tenant-Id' => (string) $mainTenant->id,
+        ]);
+        $secondDeleteResponse->assertOk()
+            ->assertJsonPath('code', '0000')
+            ->assertJsonPath('data.action', 'soft_deleted');
+
+        $this->assertSoftDeleted('users', [
+            'id' => $userId,
+        ]);
+    }
+
+    public function test_active_role_delete_deactivates_then_conflicts_when_still_assigned(): void
+    {
+        $this->seed();
+
+        $token = (string) $this->postJson('/api/auth/login', [
+            'userName' => 'Super',
+            'password' => '123456',
+        ])->json('data.token');
+
+        $mainTenant = Tenant::query()->where('code', 'TENANT_MAIN')->firstOrFail();
+        $userRole = Role::query()
+            ->where('code', 'R_USER')
+            ->where('tenant_id', $mainTenant->id)
+            ->firstOrFail();
+
+        $firstDeleteResponse = $this->deleteJson('/api/role/'.$userRole->id, [], [
+            'Authorization' => 'Bearer '.$token,
+            'X-Tenant-Id' => (string) $mainTenant->id,
+        ]);
+        $firstDeleteResponse->assertOk()
+            ->assertJsonPath('code', '0000')
+            ->assertJsonPath('data.action', 'deactivated');
+
+        $this->assertDatabaseHas('roles', [
+            'id' => $userRole->id,
+            'status' => '2',
+            'deleted_at' => null,
+        ]);
+
+        $secondDeleteResponse = $this->deleteJson('/api/role/'.$userRole->id, [], [
+            'Authorization' => 'Bearer '.$token,
+            'X-Tenant-Id' => (string) $mainTenant->id,
+        ]);
+        $secondDeleteResponse->assertOk()
+            ->assertJsonPath('code', '1009')
+            ->assertJsonPath('data.reason', 'dependency_exists');
+        $this->assertGreaterThan(0, (int) $secondDeleteResponse->json('data.dependencies.users'));
+    }
+
+    public function test_active_permission_delete_deactivates_then_conflicts_when_assigned(): void
+    {
+        $this->seed();
+
+        $token = (string) $this->postJson('/api/auth/login', [
+            'userName' => 'Super',
+            'password' => '123456',
+        ])->json('data.token');
+
+        $permission = Permission::query()->where('code', 'user.view')->firstOrFail();
+
+        $firstDeleteResponse = $this->deleteJson('/api/permission/'.$permission->id, [], [
+            'Authorization' => 'Bearer '.$token,
+        ]);
+        $firstDeleteResponse->assertOk()
+            ->assertJsonPath('code', '0000')
+            ->assertJsonPath('data.action', 'deactivated');
+
+        $this->assertDatabaseHas('permissions', [
+            'id' => $permission->id,
+            'status' => '2',
+            'deleted_at' => null,
+        ]);
+
+        $secondDeleteResponse = $this->deleteJson('/api/permission/'.$permission->id, [], [
+            'Authorization' => 'Bearer '.$token,
+        ]);
+        $secondDeleteResponse->assertOk()
+            ->assertJsonPath('code', '1009')
+            ->assertJsonPath('data.reason', 'dependency_exists');
+        $this->assertGreaterThan(0, (int) $secondDeleteResponse->json('data.dependencies.roles'));
     }
 
     public function test_super_admin_without_selected_tenant_can_create_platform_super_admin_user(): void
