@@ -17,9 +17,13 @@ class TenantContextService
 
     public const FORBIDDEN_CODE = '1003';
 
+    public const UNAUTHORIZED_CODE = '8888';
+
     private const NO_TENANTS_NAME = 'No Tenants';
 
     private const PLATFORM_TENANT_NAME = 'Platform';
+
+    private const TENANT_INACTIVE_MESSAGE = 'Tenant is inactive';
 
     public function resolveTenantContext(Request $request, User $user): TenantContext
     {
@@ -68,7 +72,7 @@ class TenantContextService
         }
 
         if (! $user->tenant_id || ! $user->tenant || $user->tenant->status !== '1') {
-            return TenantContext::failure(self::FORBIDDEN_CODE, 'Tenant is inactive');
+            return TenantContext::failure(self::UNAUTHORIZED_CODE, self::TENANT_INACTIVE_MESSAGE);
         }
 
         return TenantContext::success(
@@ -114,7 +118,7 @@ class TenantContextService
         }
 
         if (! $user->tenant_id || ! $user->tenant || $user->tenant->status !== '1') {
-            return RoleScopeContext::failure(self::FORBIDDEN_CODE, 'Tenant is inactive');
+            return RoleScopeContext::failure(self::UNAUTHORIZED_CODE, self::TENANT_INACTIVE_MESSAGE);
         }
 
         return RoleScopeContext::success(

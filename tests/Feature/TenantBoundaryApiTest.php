@@ -173,6 +173,24 @@ class TenantBoundaryApiTest extends TestCase
         $this->assertNull(User::query()->withTrashed()->findOrFail($branchUser->id)->deleted_at);
     }
 
+    public function test_tenant_user_is_forced_out_when_tenant_becomes_inactive_after_login(): void
+    {
+        $this->seed();
+
+        $tenantUserToken = $this->loginAndGetToken('Admin');
+        $mainTenant = Tenant::query()->where('code', 'TENANT_MAIN')->firstOrFail();
+
+        $mainTenant->forceFill(['status' => '2'])->save();
+
+        $response = $this->getJson('/api/user/list?current=1&size=10', [
+            'Authorization' => 'Bearer '.$tenantUserToken,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('code', '8888')
+            ->assertJsonPath('msg', 'Tenant is inactive');
+    }
+
     private function loginAndGetToken(string $userName): string
     {
         $response = $this->postJson('/api/auth/login', [
