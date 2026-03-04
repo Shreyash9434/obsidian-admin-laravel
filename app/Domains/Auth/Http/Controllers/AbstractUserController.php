@@ -12,6 +12,7 @@ use App\Domains\Auth\Http\Controllers\Concerns\ResolvesRoleScope;
 use App\Domains\Auth\Http\Controllers\Concerns\VerifiesTotpCode;
 use App\Domains\Auth\Services\MenuMetadataService;
 use App\Domains\Auth\Services\TotpService;
+use App\Domains\Shared\Auth\ManagementContext;
 use App\Domains\Shared\Http\Controllers\ApiController;
 use App\Domains\System\Services\AuditLogService;
 use App\Domains\System\Services\ThemeConfigService;
@@ -84,20 +85,8 @@ abstract class AbstractUserController extends ApiController
 
     /**
      * @param  string|list<string>  $permissionCode
-     * @return array{
-     *   ok: false,
-     *   code: string,
-     *   msg: string
-     * }|array{
-     *   ok: true,
-     *   code: string,
-     *   msg: string,
-     *   user: \App\Domains\Access\Models\User,
-     *   actorLevel: int,
-     *   tenantId: int|null
-     * }
      */
-    protected function resolveUserManagementContext(Request $request, string|array $permissionCode): array
+    protected function resolveUserManagementContext(Request $request, string|array $permissionCode): ManagementContext
     {
         if (is_array($permissionCode)) {
             $permissionCodes = array_map(static fn (string $code): string => (string) $code, $permissionCode);
@@ -107,48 +96,30 @@ abstract class AbstractUserController extends ApiController
         }
 
         if ($authResult->failed()) {
-            return [
-                'ok' => false,
-                'code' => $authResult->code(),
-                'msg' => $authResult->message(),
-            ];
+            return ManagementContext::failure($authResult->code(), $authResult->message());
         }
 
         $authUser = $authResult->user();
         if (! $authUser instanceof User) {
-            return [
-                'ok' => false,
-                'code' => self::UNAUTHORIZED_CODE,
-                'msg' => 'Unauthorized',
-            ];
+            return ManagementContext::failure(self::UNAUTHORIZED_CODE, 'Unauthorized');
         }
 
         $actorLevel = $this->resolveUserRoleLevel($authUser);
         if ($actorLevel <= 0) {
-            return [
-                'ok' => false,
-                'code' => self::FORBIDDEN_CODE,
-                'msg' => 'Forbidden',
-            ];
+            return ManagementContext::failure(self::FORBIDDEN_CODE, 'Forbidden');
         }
 
         $tenantContext = $this->resolveTenantContext($request, $authUser);
         if (! $tenantContext['ok']) {
-            return [
-                'ok' => false,
-                'code' => $tenantContext['code'],
-                'msg' => $tenantContext['msg'],
-            ];
+            return ManagementContext::failure($tenantContext['code'], $tenantContext['msg']);
         }
 
-        return [
-            'ok' => true,
-            'code' => self::SUCCESS_CODE,
-            'msg' => 'ok',
-            'user' => $authUser,
-            'actorLevel' => $actorLevel,
-            'tenantId' => $tenantContext['tenantId'] ?? null,
-        ];
+        return ManagementContext::success(
+            user: $authUser,
+            actorLevel: $actorLevel,
+            tenantId: $tenantContext['tenantId'] ?? null,
+            isSuper: $this->isSuperAdmin($authUser)
+        );
     }
 
     /**

@@ -25,14 +25,14 @@ class UserManagementController extends AbstractUserController
     public function listUsers(ListUsersRequest $request, UserTenantScopeService $userTenantScopeService): JsonResponse
     {
         $context = $this->resolveUserManagementContext($request, ['user.view', 'user.manage']);
-        if (! $context['ok']) {
-            return $this->error($context['code'], $context['msg']);
+        if ($context->failed()) {
+            return $this->error($context->code(), $context->message());
         }
 
-        $authUser = $context['user'];
-        $actorLevel = $context['actorLevel'];
-        $tenantId = $context['tenantId'];
-        $isSuper = $this->isSuperAdmin($authUser);
+        $authUser = $context->requireUser();
+        $actorLevel = $context->actorLevel();
+        $tenantId = $context->tenantId();
+        $isSuper = $context->isSuper();
 
         $validated = $request->validated();
 
@@ -89,15 +89,14 @@ class UserManagementController extends AbstractUserController
     public function assignUserRole(AssignUserRoleRequest $request, int $id, UserTenantScopeService $userTenantScopeService): JsonResponse
     {
         $context = $this->resolveUserManagementContext($request, 'user.manage');
-        if (! $context['ok']) {
-            return $this->error($context['code'], $context['msg']);
+        if ($context->failed()) {
+            return $this->error($context->code(), $context->message());
         }
 
-        $actorLevel = $context['actorLevel'];
-        $tenantId = $context['tenantId'];
-        /** @var \App\Domains\Access\Models\User $authUser */
-        $authUser = $context['user'];
-        $isSuper = $this->isSuperAdmin($authUser);
+        $actorLevel = $context->actorLevel();
+        $tenantId = $context->tenantId();
+        $authUser = $context->requireUser();
+        $isSuper = $context->isSuper();
 
         $user = $userTenantScopeService->findUserInTenantScope($id, $tenantId, $isSuper);
         if (! $user) {
@@ -161,15 +160,13 @@ class UserManagementController extends AbstractUserController
     public function createUser(CreateUserRequest $request, UserTenantScopeService $userTenantScopeService): JsonResponse
     {
         $context = $this->resolveUserManagementContext($request, 'user.manage');
-        if (! $context['ok']) {
-            return $this->error($context['code'], $context['msg']);
+        if ($context->failed()) {
+            return $this->error($context->code(), $context->message());
         }
 
-        $actorLevel = $context['actorLevel'];
-        $tenantId = $context['tenantId'];
-
-        /** @var \App\Domains\Access\Models\User $authUser */
-        $authUser = $context['user'];
+        $actorLevel = $context->actorLevel();
+        $tenantId = $context->tenantId();
+        $authUser = $context->requireUser();
         $validated = $request->validated();
         $passwordValidator = Validator::make($validated, [
             'password' => ['required', 'string', 'max:100', $this->strongPasswordRule()],
@@ -245,15 +242,14 @@ class UserManagementController extends AbstractUserController
     public function updateUser(UpdateUserRequest $request, int $id, UserTenantScopeService $userTenantScopeService): JsonResponse
     {
         $context = $this->resolveUserManagementContext($request, 'user.manage');
-        if (! $context['ok']) {
-            return $this->error($context['code'], $context['msg']);
+        if ($context->failed()) {
+            return $this->error($context->code(), $context->message());
         }
 
-        $actorLevel = $context['actorLevel'];
-        $tenantId = $context['tenantId'];
-        /** @var \App\Domains\Access\Models\User $authUser */
-        $authUser = $context['user'];
-        $isSuper = $this->isSuperAdmin($authUser);
+        $actorLevel = $context->actorLevel();
+        $tenantId = $context->tenantId();
+        $authUser = $context->requireUser();
+        $isSuper = $context->isSuper();
 
         $user = $userTenantScopeService->findUserInTenantScope($id, $tenantId, $isSuper);
         if (! $user) {
@@ -356,14 +352,14 @@ class UserManagementController extends AbstractUserController
     public function deleteUser(Request $request, int $id, UserTenantScopeService $userTenantScopeService): JsonResponse
     {
         $context = $this->resolveUserManagementContext($request, 'user.manage');
-        if (! $context['ok']) {
-            return $this->error($context['code'], $context['msg']);
+        if ($context->failed()) {
+            return $this->error($context->code(), $context->message());
         }
 
-        $authUser = $context['user'];
-        $actorLevel = $context['actorLevel'];
-        $tenantId = $context['tenantId'];
-        $isSuper = $this->isSuperAdmin($authUser);
+        $authUser = $context->requireUser();
+        $actorLevel = $context->actorLevel();
+        $tenantId = $context->tenantId();
+        $isSuper = $context->isSuper();
 
         if ($authUser->id === $id) {
             return $this->error(self::FORBIDDEN_CODE, 'Current user cannot be deleted');
