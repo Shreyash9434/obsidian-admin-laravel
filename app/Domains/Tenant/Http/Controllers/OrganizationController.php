@@ -181,11 +181,10 @@ class OrganizationController extends ApiController
             return $this->error(self::UNAUTHORIZED_CODE, 'Unauthorized');
         }
         $user = $context->requireUser();
-        $organizationResult = $this->resolveTenantOrganization($tenantId, $id);
-        if (! $organizationResult['ok']) {
-            return $organizationResult['response'];
+        $organization = $this->resolveTenantOrganization($tenantId, $id);
+        if (! $organization instanceof Organization) {
+            return $this->organizationScopeErrorResponse($id);
         }
-        $organization = $organizationResult['organization'];
 
         $optimisticLockError = $this->ensureOptimisticLock($request, $organization, 'Organization');
         if ($optimisticLockError) {
@@ -227,11 +226,10 @@ class OrganizationController extends ApiController
             return $this->error(self::UNAUTHORIZED_CODE, 'Unauthorized');
         }
         $user = $context->requireUser();
-        $organizationResult = $this->resolveTenantOrganization($tenantId, $id, ['teams', 'users']);
-        if (! $organizationResult['ok']) {
-            return $organizationResult['response'];
+        $organization = $this->resolveTenantOrganization($tenantId, $id, ['teams', 'users']);
+        if (! $organization instanceof Organization) {
+            return $this->organizationScopeErrorResponse($id);
         }
-        $organization = $organizationResult['organization'];
 
         if ((int) ($organization->teams_count ?? 0) > 0) {
             return $this->error(self::PARAM_ERROR_CODE, 'Organization has assigned teams');
@@ -318,9 +316,8 @@ class OrganizationController extends ApiController
 
     /**
      * @param  list<string>  $withCount
-     * @return array{ok: true, organization: Organization}|array{ok: false, response: JsonResponse}
      */
-    private function resolveTenantOrganization(int $tenantId, int $id, array $withCount = []): array
+    private function resolveTenantOrganization(int $tenantId, int $id, array $withCount = []): ?Organization
     {
         $query = Organization::query()
             ->where('tenant_id', $tenantId);
@@ -331,18 +328,17 @@ class OrganizationController extends ApiController
 
         $organization = $query->find($id);
         if ($organization instanceof Organization) {
-            return [
-                'ok' => true,
-                'organization' => $organization,
-            ];
+            return $organization;
         }
 
-        return [
-            'ok' => false,
-            'response' => Organization::query()->whereKey($id)->exists()
-                ? $this->error(self::FORBIDDEN_CODE, 'Forbidden')
-                : $this->error(self::PARAM_ERROR_CODE, 'Organization not found'),
-        ];
+        return null;
+    }
+
+    private function organizationScopeErrorResponse(int $id): JsonResponse
+    {
+        return Organization::query()->whereKey($id)->exists()
+            ? $this->error(self::FORBIDDEN_CODE, 'Forbidden')
+            : $this->error(self::PARAM_ERROR_CODE, 'Organization not found');
     }
 
     /**

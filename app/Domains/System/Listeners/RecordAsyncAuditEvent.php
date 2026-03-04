@@ -6,10 +6,10 @@ namespace App\Domains\System\Listeners;
 
 use App\Domains\System\Contracts\AsyncAuditEvent;
 use App\Domains\System\Services\AuditLogService;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Foundation\Queue\Queueable;
 
-final class RecordAsyncAuditEvent implements ShouldQueue
+final class RecordAsyncAuditEvent implements ShouldQueueAfterCommit
 {
     use Queueable;
 
@@ -24,7 +24,6 @@ final class RecordAsyncAuditEvent implements ShouldQueue
 
     public function __construct()
     {
-        $this->afterCommit();
         $this->tries = max(1, (int) config('audit.queue.tries', 5));
         $this->backoff = $this->normalizeBackoff(config('audit.queue.backoff', [5, 30, 120]));
         $this->timeout = max(1, (int) config('audit.queue.timeout', 15));

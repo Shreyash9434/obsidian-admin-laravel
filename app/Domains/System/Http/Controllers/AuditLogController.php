@@ -38,8 +38,8 @@ class AuditLogController extends ApiController
         }
 
         $roleScope = $this->tenantContextService->resolveRoleScope($request, $user);
-        if (! $roleScope['ok']) {
-            return $this->error($roleScope['code'], $roleScope['msg']);
+        if ($roleScope->failed()) {
+            return $this->error($roleScope->code(), $roleScope->message());
         }
 
         $validated = $request->validated();
@@ -70,8 +70,8 @@ class AuditLogController extends ApiController
 
         $this->applyAuditVisibilityScope(
             $query,
-            $roleScope['tenantId'] ?? null,
-            (bool) ($roleScope['isSuper'] ?? false)
+            $roleScope->tenantId(),
+            $roleScope->isSuper()
         );
 
         if ($keyword !== '') {

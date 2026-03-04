@@ -21,15 +21,40 @@ final class RequestTraceContext
 
     public static function requestId(?Request $request = null): string
     {
-        $request ??= request();
+        $contextRequestId = RequestContext::requestId();
+        if ($contextRequestId !== '') {
+            return $contextRequestId;
+        }
+
+        $request ??= self::resolveCurrentRequest();
+        if (! $request instanceof Request) {
+            return '';
+        }
 
         return trim((string) ($request->attributes->get('request_id', '') ?? ''));
     }
 
     public static function traceId(?Request $request = null): string
     {
-        $request ??= request();
+        $contextTraceId = RequestContext::traceId();
+        if ($contextTraceId !== '') {
+            return $contextTraceId;
+        }
+
+        $request ??= self::resolveCurrentRequest();
+        if (! $request instanceof Request) {
+            return '';
+        }
 
         return trim((string) ($request->attributes->get('trace_id', '') ?? ''));
+    }
+
+    private static function resolveCurrentRequest(): ?Request
+    {
+        try {
+            return request();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

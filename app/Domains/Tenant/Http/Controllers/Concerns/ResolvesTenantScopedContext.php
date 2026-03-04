@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Tenant\Http\Controllers\Concerns;
 
 use App\Domains\Access\Models\User;
-use App\Domains\Shared\Auth\TenantContext;
 use App\Domains\Shared\Auth\TenantScopedContext;
 use App\Domains\Tenant\Services\TenantContextService;
 use Illuminate\Http\Request;
@@ -56,7 +55,7 @@ trait ResolvesTenantScopedContext
             return TenantScopedContext::failure(self::FORBIDDEN_CODE, 'Forbidden');
         }
 
-        $tenantContext = TenantContext::fromPayload($tenantContextService->resolveTenantContext($request, $user));
+        $tenantContext = $tenantContextService->resolveTenantContext($request, $user);
         if ($tenantContext->failed()) {
             return TenantScopedContext::failure($tenantContext->code(), $tenantContext->message());
         }

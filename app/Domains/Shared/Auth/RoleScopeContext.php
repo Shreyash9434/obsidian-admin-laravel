@@ -4,40 +4,24 @@ declare(strict_types=1);
 
 namespace App\Domains\Shared\Auth;
 
-/**
- * @phpstan-type TenantOption array{tenantId: string, tenantName: string}
- */
-final readonly class TenantContext
+final readonly class RoleScopeContext
 {
-    /**
-     * @param  list<TenantOption>  $tenants
-     */
     private function __construct(
         private bool $ok,
         private string $code,
         private string $message,
         private ?int $tenantId = null,
-        private string $tenantName = '',
-        private array $tenants = [],
+        private bool $isSuper = false,
     ) {}
 
-    /**
-     * @param  list<TenantOption>  $tenants
-     */
-    public static function success(
-        ?int $tenantId,
-        string $tenantName,
-        array $tenants = [],
-        string $code = '0000',
-        string $message = 'ok',
-    ): self {
+    public static function success(?int $tenantId, bool $isSuper): self
+    {
         return new self(
             ok: true,
-            code: $code,
-            message: $message,
+            code: '0000',
+            message: 'ok',
             tenantId: $tenantId,
-            tenantName: $tenantName,
-            tenants: $tenants,
+            isSuper: $isSuper,
         );
     }
 
@@ -75,16 +59,8 @@ final readonly class TenantContext
         return $this->tenantId;
     }
 
-    public function tenantName(): string
+    public function isSuper(): bool
     {
-        return $this->tenantName;
-    }
-
-    /**
-     * @return list<TenantOption>
-     */
-    public function tenants(): array
-    {
-        return $this->tenants;
+        return $this->isSuper;
     }
 }

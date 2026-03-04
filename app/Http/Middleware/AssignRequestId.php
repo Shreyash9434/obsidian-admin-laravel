@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Support\RequestContext;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -31,6 +32,13 @@ class AssignRequestId
         $request->attributes->set('traceparent', $traceContext['traceParent']);
         $request->attributes->set('parent_span_id', $traceContext['parentSpanId']);
         $request->attributes->set('span_id', $traceContext['spanId']);
+        RequestContext::add([
+            RequestContext::KEY_REQUEST_ID => $requestId,
+            RequestContext::KEY_TRACE_ID => $traceContext['traceId'],
+            RequestContext::KEY_TRACE_PARENT => $traceContext['traceParent'],
+            RequestContext::KEY_PARENT_SPAN_ID => $traceContext['parentSpanId'],
+            RequestContext::KEY_SPAN_ID => $traceContext['spanId'],
+        ]);
         Log::withContext([
             'request_id' => $requestId,
             'trace_id' => $traceContext['traceId'],

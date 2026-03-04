@@ -7,6 +7,7 @@ namespace App\Domains\Access\Services;
 use App\Domains\Access\Models\Permission;
 use App\Domains\Access\Models\Role;
 use App\Domains\Access\Models\User;
+use App\Domains\Shared\Auth\AssignablePermissionIdsResult;
 use App\Domains\Shared\Support\TenantVisibility;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
@@ -85,18 +86,17 @@ final class RoleScopeGuardService
 
     /**
      * @param  list<string>  $permissionCodes
-     * @return array{ok: bool, ids: list<int>}
      */
-    public function resolveAssignablePermissionIds(array $permissionCodes, ?int $tenantId, bool $isSuper): array
-    {
+    public function resolveAssignablePermissionIds(
+        array $permissionCodes,
+        ?int $tenantId,
+        bool $isSuper
+    ): AssignablePermissionIdsResult {
         $uniqueCodes = array_values(array_unique(array_map(static fn (string $code): string => trim($code), $permissionCodes)));
         $uniqueCodes = array_values(array_filter($uniqueCodes, static fn (string $code): bool => $code !== ''));
 
         if ($uniqueCodes === []) {
-            return [
-                'ok' => true,
-                'ids' => [],
-            ];
+            return AssignablePermissionIdsResult::success([]);
         }
 
         $assignablePermissions = $this->buildAssignablePermissionQuery($tenantId, $isSuper)
@@ -104,10 +104,10 @@ final class RoleScopeGuardService
             ->get(['id', 'code']);
 
         if ($assignablePermissions->count() !== count($uniqueCodes)) {
-            return [
-                'ok' => false,
-                'ids' => [],
-            ];
+            return AssignablePermissionIdsResult::failure(
+                '1003',
+                'Some permissions are not assignable in current tenant scope'
+            );
         }
 
         /** @var list<int> $permissionIds */
@@ -117,10 +117,7 @@ final class RoleScopeGuardService
             ->values()
             ->all();
 
-        return [
-            'ok' => true,
-            'ids' => $permissionIds,
-        ];
+        return AssignablePermissionIdsResult::success($permissionIds);
     }
 
     public function resolveUserRoleLevel(User $user): int

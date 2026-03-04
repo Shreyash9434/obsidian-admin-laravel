@@ -6,6 +6,8 @@ namespace App\Domains\Tenant\Services;
 
 use App\Domains\Access\Models\Role;
 use App\Domains\Access\Models\User;
+use App\Domains\Shared\Auth\RoleScopeContext;
+use App\Domains\Shared\Auth\TenantContext;
 use App\Domains\Tenant\Models\Tenant;
 use Illuminate\Http\Request;
 
@@ -15,17 +17,7 @@ class TenantContextService
 
     public const FORBIDDEN_CODE = '1003';
 
-    /**
-     * @return array{
-     *   ok: bool,
-     *   code: string,
-     *   msg: string,
-     *   tenantId?: int|null,
-     *   tenantName?: string,
-     *   tenants?: list<array{tenantId: string, tenantName: string}>
-     * }
-     */
-    public function resolveTenantContext(Request $request, User $user): array
+    public function resolveTenantContext(Request $request, User $user): TenantContext
     {
         $user->loadMissing('role:id,code,level,status', 'tenant:id,name,status');
 
@@ -38,58 +30,46 @@ class TenantContextService
             $headerTenantId = $this->headerTenantId($request);
             $currentTenant = $headerTenantId > 0 ? $activeTenants->firstWhere('id', $headerTenantId) : null;
             if ($headerTenantId > 0 && ! $currentTenant) {
-                return [
-                    'ok' => false,
-                    'code' => self::FORBIDDEN_CODE,
-                    'msg' => 'Selected tenant is invalid or inactive',
-                ];
+                return TenantContext::failure(self::FORBIDDEN_CODE, 'Selected tenant is invalid or inactive');
             }
 
-            return [
-                'ok' => true,
-                'code' => self::SUCCESS_CODE,
-                'msg' => 'ok',
-                'tenantId' => $currentTenant ? (int) $currentTenant->id : null,
-                'tenantName' => $currentTenant ? (string) $currentTenant->name : 'No Tenants',
-                'tenants' => array_values($activeTenants
-                    ->map(static function (Tenant $tenant): array {
-                        return [
-                            'tenantId' => (string) $tenant->id,
-                            'tenantName' => (string) $tenant->name,
-                        ];
-                    })
-                    ->values()
-                    ->all()),
-            ];
+            /** @var list<array{tenantId: string, tenantName: string}> $tenantOptions */
+            $tenantOptions = $activeTenants
+                ->map(static function (Tenant $tenant): array {
+                    return [
+                        'tenantId' => (string) $tenant->id,
+                        'tenantName' => (string) $tenant->name,
+                    ];
+                })
+                ->values()
+                ->all();
+
+            return TenantContext::success(
+                tenantId: $currentTenant ? (int) $currentTenant->id : null,
+                tenantName: $currentTenant ? (string) $currentTenant->name : 'No Tenants',
+                tenants: $tenantOptions,
+                code: self::SUCCESS_CODE,
+                message: 'ok'
+            );
         }
 
         if (! $user->tenant_id || ! $user->tenant || $user->tenant->status !== '1') {
-            return [
-                'ok' => false,
-                'code' => self::FORBIDDEN_CODE,
-                'msg' => 'Tenant is inactive',
-            ];
+            return TenantContext::failure(self::FORBIDDEN_CODE, 'Tenant is inactive');
         }
 
-        return [
-            'ok' => true,
-            'code' => self::SUCCESS_CODE,
-            'msg' => 'ok',
-            'tenantId' => (int) $user->tenant->id,
-            'tenantName' => (string) $user->tenant->name,
-            'tenants' => [
-                [
-                    'tenantId' => (string) $user->tenant->id,
-                    'tenantName' => (string) $user->tenant->name,
-                ],
-            ],
-        ];
+        return TenantContext::success(
+            tenantId: (int) $user->tenant->id,
+            tenantName: (string) $user->tenant->name,
+            tenants: [[
+                'tenantId' => (string) $user->tenant->id,
+                'tenantName' => (string) $user->tenant->name,
+            ]],
+            code: self::SUCCESS_CODE,
+            message: 'ok'
+        );
     }
 
-    /**
-     * @return array{ok: bool, code: string, msg: string, tenantId?: int|null, isSuper?: bool}
-     */
-    public function resolveRoleScope(Request $request, User $user): array
+    public function resolveRoleScope(Request $request, User $user): RoleScopeContext
     {
         $user->loadMissing('role:id,code,level,status', 'tenant:id,status');
 
@@ -102,38 +82,24 @@ class TenantContextService
 
             $headerTenantId = $this->headerTenantId($request);
             if ($headerTenantId > 0 && ! in_array($headerTenantId, $activeTenantIds, true)) {
-                return [
-                    'ok' => false,
-                    'code' => self::FORBIDDEN_CODE,
-                    'msg' => 'Selected tenant is invalid or inactive',
-                ];
+                return RoleScopeContext::failure(self::FORBIDDEN_CODE, 'Selected tenant is invalid or inactive');
             }
             $tenantId = in_array($headerTenantId, $activeTenantIds, true) ? $headerTenantId : null;
 
-            return [
-                'ok' => true,
-                'code' => self::SUCCESS_CODE,
-                'msg' => 'ok',
-                'tenantId' => $tenantId,
-                'isSuper' => true,
-            ];
+            return RoleScopeContext::success(
+                tenantId: $tenantId,
+                isSuper: true
+            );
         }
 
         if (! $user->tenant_id || ! $user->tenant || $user->tenant->status !== '1') {
-            return [
-                'ok' => false,
-                'code' => self::FORBIDDEN_CODE,
-                'msg' => 'Tenant is inactive',
-            ];
+            return RoleScopeContext::failure(self::FORBIDDEN_CODE, 'Tenant is inactive');
         }
 
-        return [
-            'ok' => true,
-            'code' => self::SUCCESS_CODE,
-            'msg' => 'ok',
-            'tenantId' => (int) $user->tenant_id,
-            'isSuper' => false,
-        ];
+        return RoleScopeContext::success(
+            tenantId: (int) $user->tenant_id,
+            isSuper: false
+        );
     }
 
     public function isSuperAdmin(User $user): bool

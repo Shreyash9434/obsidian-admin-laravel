@@ -34,8 +34,8 @@ class ThemeConfigController extends ApiController
         }
 
         $accessError = $this->resolveThemeConfigAccessError($request, $user);
-        if ($accessError !== null) {
-            return $this->error($accessError['code'], $accessError['msg']);
+        if ($accessError instanceof JsonResponse) {
+            return $accessError;
         }
 
         $scope = $this->resolveScope($user);
@@ -97,8 +97,8 @@ class ThemeConfigController extends ApiController
         }
 
         $accessError = $this->resolveThemeConfigAccessError($request, $user);
-        if ($accessError !== null) {
-            return $this->error($accessError['code'], $accessError['msg']);
+        if ($accessError instanceof JsonResponse) {
+            return $accessError;
         }
 
         $scope = $this->resolveScope($user);
@@ -170,8 +170,8 @@ class ThemeConfigController extends ApiController
         }
 
         $accessError = $this->resolveThemeConfigAccessError($request, $user);
-        if ($accessError !== null) {
-            return $this->error($accessError['code'], $accessError['msg']);
+        if ($accessError instanceof JsonResponse) {
+            return $accessError;
         }
 
         $scope = $this->resolveScope($user);
@@ -232,25 +232,16 @@ class ThemeConfigController extends ApiController
         return $this->themeConfigService->resolveActorScope($user, null);
     }
 
-    /**
-     * @return array{code: string, msg: string}|null
-     */
-    private function resolveThemeConfigAccessError(Request $request, User $user): ?array
+    private function resolveThemeConfigAccessError(Request $request, User $user): ?JsonResponse
     {
         if (! $this->isSuperAdmin($user)) {
-            return [
-                'code' => self::FORBIDDEN_CODE,
-                'msg' => 'Forbidden',
-            ];
+            return $this->error(self::FORBIDDEN_CODE, 'Forbidden');
         }
 
         $selectedTenantHeader = $request->header('X-Tenant-Id');
         $selectedTenantId = is_numeric($selectedTenantHeader) ? (int) $selectedTenantHeader : 0;
         if ($selectedTenantId > 0) {
-            return [
-                'code' => self::FORBIDDEN_CODE,
-                'msg' => 'Switch to No Tenant to manage theme configuration',
-            ];
+            return $this->error(self::FORBIDDEN_CODE, 'Switch to No Tenant to manage theme configuration');
         }
 
         return null;

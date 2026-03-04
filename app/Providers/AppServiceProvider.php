@@ -9,6 +9,7 @@ use App\Domains\Tenant\Actions\ResolveActiveTenantIdByCodeAction;
 use App\Domains\Tenant\Contracts\ActiveTenantResolver;
 use App\Support\ApiDateTime;
 use App\Support\AppLocale;
+use App\Support\RequestContext;
 use App\Support\RequestTraceContext;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
@@ -79,6 +80,7 @@ class AppServiceProvider extends ServiceProvider
             \Laravel\Octane\Events\RequestReceived::class,
             static function (): void {
                 ApiDateTime::flushState();
+                RequestContext::flush();
                 Log::withoutContext();
                 app()->setLocale(AppLocale::defaultFrameworkLocale());
             }

@@ -114,13 +114,12 @@ class UserManagementController extends AbstractUserController
         }
 
         $roleCode = (string) $request->validated()['roleCode'];
-        $role = $this->findActiveRoleByCode($roleCode, $tenantId, (int) ($user->tenant_id ?? 0));
-        if (! $role['ok']) {
-            return $this->error(self::PARAM_ERROR_CODE, $role['msg']);
+        $roleLookup = $this->findActiveRoleByCode($roleCode, $tenantId, (int) ($user->tenant_id ?? 0));
+        if ($roleLookup->failed()) {
+            return $this->error(self::PARAM_ERROR_CODE, $roleLookup->message());
         }
 
-        /** @var \App\Domains\Access\Models\Role $roleModel */
-        $roleModel = $role['role'];
+        $roleModel = $roleLookup->requireRole();
         if (! $this->isRoleLevelAllowed($actorLevel, $roleModel)) {
             return $this->error(self::FORBIDDEN_CODE, 'Forbidden');
         }
@@ -176,13 +175,12 @@ class UserManagementController extends AbstractUserController
         }
         $roleCode = (string) $validated['roleCode'];
 
-        $role = $this->findActiveRoleByCode($roleCode, $tenantId);
-        if (! $role['ok']) {
-            return $this->error(self::PARAM_ERROR_CODE, $role['msg']);
+        $roleLookup = $this->findActiveRoleByCode($roleCode, $tenantId);
+        if ($roleLookup->failed()) {
+            return $this->error(self::PARAM_ERROR_CODE, $roleLookup->message());
         }
 
-        /** @var \App\Domains\Access\Models\Role $roleModel */
-        $roleModel = $role['role'];
+        $roleModel = $roleLookup->requireRole();
         if (! $this->isRoleLevelAllowed($actorLevel, $roleModel)) {
             return $this->error(self::FORBIDDEN_CODE, 'Forbidden');
         }
@@ -190,16 +188,18 @@ class UserManagementController extends AbstractUserController
             return $this->error(self::PARAM_ERROR_CODE, 'Role does not belong to selected tenant');
         }
         $targetTenantId = $roleModel->tenant_id !== null ? (int) $roleModel->tenant_id : null;
-        $binding = $userTenantScopeService->resolveOrganizationTeamBinding(
+        $bindingResult = $userTenantScopeService->resolveOrganizationTeamBinding(
             $targetTenantId,
             $validated['organizationId'] ?? null,
             $validated['teamId'] ?? null
         );
-        if (! $binding['ok']) {
-            return $this->error(self::PARAM_ERROR_CODE, $binding['msg']);
+        if ($bindingResult->failed()) {
+            return $this->error(self::PARAM_ERROR_CODE, $bindingResult->message());
         }
+        $organizationId = $bindingResult->organizationId();
+        $teamId = $bindingResult->teamId();
 
-        return $this->withIdempotency($request, $authUser, function () use ($validated, $roleModel, $targetTenantId, $binding, $authUser, $request): JsonResponse {
+        return $this->withIdempotency($request, $authUser, function () use ($validated, $roleModel, $targetTenantId, $organizationId, $teamId, $authUser, $request): JsonResponse {
             $user = $this->userService->create(new CreateUserDTO(
                 name: trim((string) $validated['userName']),
                 email: trim((string) $validated['email']),
@@ -207,8 +207,8 @@ class UserManagementController extends AbstractUserController
                 status: (string) ($validated['status'] ?? '1'),
                 roleId: $roleModel->id,
                 tenantId: $targetTenantId,
-                organizationId: $binding['organizationId'],
-                teamId: $binding['teamId'],
+                organizationId: $organizationId,
+                teamId: $teamId,
             ));
             $this->auditLogService->record(
                 action: 'user.create',
@@ -220,8 +220,8 @@ class UserManagementController extends AbstractUserController
                     'email' => $user->email,
                     'roleCode' => $roleModel->code,
                     'status' => (string) $user->status,
-                    'organizationId' => $binding['organizationId'],
-                    'teamId' => $binding['teamId'],
+                    'organizationId' => $organizationId,
+                    'teamId' => $teamId,
                 ],
                 tenantId: $targetTenantId
             );
@@ -275,13 +275,12 @@ class UserManagementController extends AbstractUserController
         }
         $roleCode = (string) $validated['roleCode'];
 
-        $role = $this->findActiveRoleByCode($roleCode, $tenantId, (int) ($user->tenant_id ?? 0));
-        if (! $role['ok']) {
-            return $this->error(self::PARAM_ERROR_CODE, $role['msg']);
+        $roleLookup = $this->findActiveRoleByCode($roleCode, $tenantId, (int) ($user->tenant_id ?? 0));
+        if ($roleLookup->failed()) {
+            return $this->error(self::PARAM_ERROR_CODE, $roleLookup->message());
         }
 
-        /** @var \App\Domains\Access\Models\Role $roleModel */
-        $roleModel = $role['role'];
+        $roleModel = $roleLookup->requireRole();
         if (! $this->isRoleLevelAllowed($actorLevel, $roleModel)) {
             return $this->error(self::FORBIDDEN_CODE, 'Forbidden');
         }
@@ -289,14 +288,16 @@ class UserManagementController extends AbstractUserController
         if (! $this->isRoleInTenantScope($roleModel, $targetTenantId)) {
             return $this->error(self::PARAM_ERROR_CODE, 'Role does not belong to user tenant');
         }
-        $binding = $userTenantScopeService->resolveOrganizationTeamBinding(
+        $bindingResult = $userTenantScopeService->resolveOrganizationTeamBinding(
             $targetTenantId,
             $validated['organizationId'] ?? null,
             $validated['teamId'] ?? null
         );
-        if (! $binding['ok']) {
-            return $this->error(self::PARAM_ERROR_CODE, $binding['msg']);
+        if ($bindingResult->failed()) {
+            return $this->error(self::PARAM_ERROR_CODE, $bindingResult->message());
         }
+        $organizationId = $bindingResult->organizationId();
+        $teamId = $bindingResult->teamId();
 
         $password = (string) ($validated['password'] ?? '');
 
@@ -315,8 +316,8 @@ class UserManagementController extends AbstractUserController
             status: (string) ($validated['status'] ?? $user->status),
             roleId: $roleModel->id,
             tenantId: $targetTenantId,
-            organizationId: $binding['organizationId'],
-            teamId: $binding['teamId'],
+            organizationId: $organizationId,
+            teamId: $teamId,
         ));
         $this->auditLogService->record(
             action: 'user.update',
@@ -329,8 +330,8 @@ class UserManagementController extends AbstractUserController
                 'email' => $user->email,
                 'roleCode' => $roleModel->code,
                 'status' => (string) $user->status,
-                'organizationId' => $binding['organizationId'],
-                'teamId' => $binding['teamId'],
+                'organizationId' => $organizationId,
+                'teamId' => $teamId,
             ],
             tenantId: $targetTenantId
         );

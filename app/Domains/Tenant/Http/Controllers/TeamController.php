@@ -200,11 +200,10 @@ class TeamController extends ApiController
             return $this->error(self::UNAUTHORIZED_CODE, 'Unauthorized');
         }
         $user = $context->requireUser();
-        $teamResult = $this->resolveTenantTeam($tenantId, $id, ['users']);
-        if (! $teamResult['ok']) {
-            return $teamResult['response'];
+        $team = $this->resolveTenantTeam($tenantId, $id, ['users']);
+        if (! $team instanceof Team) {
+            return $this->teamScopeErrorResponse($id);
         }
-        $team = $teamResult['team'];
 
         $optimisticLockError = $this->ensureOptimisticLock($request, $team, 'Team');
         if ($optimisticLockError) {
@@ -255,11 +254,10 @@ class TeamController extends ApiController
             return $this->error(self::UNAUTHORIZED_CODE, 'Unauthorized');
         }
         $user = $context->requireUser();
-        $teamResult = $this->resolveTenantTeam($tenantId, $id, ['users']);
-        if (! $teamResult['ok']) {
-            return $teamResult['response'];
+        $team = $this->resolveTenantTeam($tenantId, $id, ['users']);
+        if (! $team instanceof Team) {
+            return $this->teamScopeErrorResponse($id);
         }
-        $team = $teamResult['team'];
 
         if ((int) ($team->users_count ?? 0) > 0) {
             return $this->error(self::PARAM_ERROR_CODE, 'Team has assigned users');
@@ -358,9 +356,8 @@ class TeamController extends ApiController
 
     /**
      * @param  list<string>  $withCount
-     * @return array{ok: true, team: Team}|array{ok: false, response: JsonResponse}
      */
-    private function resolveTenantTeam(int $tenantId, int $id, array $withCount = []): array
+    private function resolveTenantTeam(int $tenantId, int $id, array $withCount = []): ?Team
     {
         $query = Team::query()
             ->where('tenant_id', $tenantId);
@@ -371,18 +368,17 @@ class TeamController extends ApiController
 
         $team = $query->find($id);
         if ($team instanceof Team) {
-            return [
-                'ok' => true,
-                'team' => $team,
-            ];
+            return $team;
         }
 
-        return [
-            'ok' => false,
-            'response' => Team::query()->whereKey($id)->exists()
-                ? $this->error(self::FORBIDDEN_CODE, 'Forbidden')
-                : $this->error(self::PARAM_ERROR_CODE, 'Team not found'),
-        ];
+        return null;
+    }
+
+    private function teamScopeErrorResponse(int $id): JsonResponse
+    {
+        return Team::query()->whereKey($id)->exists()
+            ? $this->error(self::FORBIDDEN_CODE, 'Forbidden')
+            : $this->error(self::PARAM_ERROR_CODE, 'Team not found');
     }
 
     /**

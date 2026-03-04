@@ -6,16 +6,17 @@ namespace App\Domains\Auth\Http\Controllers\Concerns;
 
 use App\Domains\Access\Models\Role;
 use App\Domains\Access\Models\User;
+use App\Domains\Shared\Auth\RoleLookupResult;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 trait ResolvesRoleScope
 {
-    /**
-     * @return array{ok: false, msg: string}|array{ok: true, msg: string, role: Role}
-     */
-    protected function findActiveRoleByCode(string $roleCode, ?int $tenantId = null, ?int $fallbackTenantId = null): array
-    {
+    protected function findActiveRoleByCode(
+        string $roleCode,
+        ?int $tenantId = null,
+        ?int $fallbackTenantId = null
+    ): RoleLookupResult {
         $scopedQuery = Role::query()->where('code', $roleCode);
         $this->applyRoleTenantScope($scopedQuery, $tenantId, $fallbackTenantId);
 
@@ -30,17 +31,13 @@ trait ResolvesRoleScope
                 ->where('status', '!=', '1')
                 ->exists();
 
-            return [
-                'ok' => false,
-                'msg' => $inactiveRoleExists ? 'Role is inactive' : 'Role not found',
-            ];
+            return RoleLookupResult::failure(
+                '1002',
+                $inactiveRoleExists ? 'Role is inactive' : 'Role not found'
+            );
         }
 
-        return [
-            'ok' => true,
-            'msg' => 'ok',
-            'role' => $role,
-        ];
+        return RoleLookupResult::success($role);
     }
 
     /**

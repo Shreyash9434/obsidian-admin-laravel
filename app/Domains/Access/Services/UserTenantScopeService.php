@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Access\Services;
 
 use App\Domains\Access\Models\User;
+use App\Domains\Shared\Auth\OrganizationTeamBindingResult;
 use App\Domains\Shared\Support\TenantVisibility;
 use App\Domains\Tenant\Models\Organization;
 use App\Domains\Tenant\Models\Team;
@@ -93,16 +94,11 @@ final class UserTenantScopeService
         return $query->first();
     }
 
-    /**
-     * @return array{
-     *   ok: bool,
-     *   msg: string,
-     *   organizationId: int|null,
-     *   teamId: int|null
-     * }
-     */
-    public function resolveOrganizationTeamBinding(?int $tenantId, mixed $organizationIdInput, mixed $teamIdInput): array
-    {
+    public function resolveOrganizationTeamBinding(
+        ?int $tenantId,
+        mixed $organizationIdInput,
+        mixed $teamIdInput
+    ): OrganizationTeamBindingResult {
         $organizationId = is_numeric($organizationIdInput) ? (int) $organizationIdInput : null;
         $teamId = is_numeric($teamIdInput) ? (int) $teamIdInput : null;
 
@@ -115,20 +111,13 @@ final class UserTenantScopeService
 
         if ($tenantId === null) {
             if ($organizationId !== null || $teamId !== null) {
-                return [
-                    'ok' => false,
-                    'msg' => 'Organization and team are not available for platform users',
-                    'organizationId' => null,
-                    'teamId' => null,
-                ];
+                return OrganizationTeamBindingResult::failure(
+                    '1002',
+                    'Organization and team are not available for platform users'
+                );
             }
 
-            return [
-                'ok' => true,
-                'msg' => 'ok',
-                'organizationId' => null,
-                'teamId' => null,
-            ];
+            return OrganizationTeamBindingResult::success(null, null);
         }
 
         $organization = null;
@@ -138,22 +127,15 @@ final class UserTenantScopeService
                 ->find($organizationId);
 
             if (! $organization) {
-                return [
-                    'ok' => false,
-                    'msg' => 'Organization not found',
-                    'organizationId' => null,
-                    'teamId' => null,
-                ];
+                return OrganizationTeamBindingResult::failure('1002', 'Organization not found');
             }
         }
 
         if ($teamId === null) {
-            return [
-                'ok' => true,
-                'msg' => 'ok',
-                'organizationId' => $organization?->id,
-                'teamId' => null,
-            ];
+            return OrganizationTeamBindingResult::success(
+                $organization !== null ? (int) $organization->id : null,
+                null
+            );
         }
 
         $team = Team::query()
@@ -161,28 +143,16 @@ final class UserTenantScopeService
             ->find($teamId);
 
         if (! $team) {
-            return [
-                'ok' => false,
-                'msg' => 'Team not found',
-                'organizationId' => null,
-                'teamId' => null,
-            ];
+            return OrganizationTeamBindingResult::failure('1002', 'Team not found');
         }
 
         if ($organization !== null && (int) $team->organization_id !== (int) $organization->id) {
-            return [
-                'ok' => false,
-                'msg' => 'Team does not belong to selected organization',
-                'organizationId' => null,
-                'teamId' => null,
-            ];
+            return OrganizationTeamBindingResult::failure('1002', 'Team does not belong to selected organization');
         }
 
-        return [
-            'ok' => true,
-            'msg' => 'ok',
-            'organizationId' => $organization !== null ? (int) $organization->id : (int) $team->organization_id,
-            'teamId' => $team->id,
-        ];
+        return OrganizationTeamBindingResult::success(
+            $organization !== null ? (int) $organization->id : (int) $team->organization_id,
+            (int) $team->id
+        );
     }
 }

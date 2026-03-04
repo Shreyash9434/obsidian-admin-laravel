@@ -57,12 +57,12 @@ class AuthSessionController extends ApiController
         }
 
         $defaultTenantId = $this->activeTenantResolver->findActiveTenantIdByCode('TENANT_MAIN');
-        $defaultRole = $this->findActiveRoleByCode('R_USER', $defaultTenantId);
-        if ($defaultRole['ok'] === false) {
+        $defaultRoleLookup = $this->findActiveRoleByCode('R_USER', $defaultTenantId);
+        if ($defaultRoleLookup->failed()) {
             return $this->error(self::PARAM_ERROR_CODE, 'Default tenant role is not configured');
         }
 
-        $defaultRoleModel = $defaultRole['role'];
+        $defaultRoleModel = $defaultRoleLookup->requireRole();
         if (! $this->isRoleInTenantScope($defaultRoleModel, $defaultTenantId)) {
             return $this->error(self::PARAM_ERROR_CODE, 'Default tenant role is not configured');
         }

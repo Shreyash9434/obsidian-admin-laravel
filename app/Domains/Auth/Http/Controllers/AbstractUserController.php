@@ -126,9 +126,7 @@ abstract class AbstractUserController extends ApiController
 
     protected function resolveTenantContext(Request $request, User $user): TenantContext
     {
-        return TenantContext::fromPayload(
-            $this->tenantContextService->resolveTenantContext($request, $user)
-        );
+        return $this->tenantContextService->resolveTenantContext($request, $user);
     }
 
     protected function resolveAuthenticatedUser(Request $request): ApiAuthResult

@@ -155,11 +155,10 @@ class TenantController extends ApiController
             return $this->error($authResult->code(), $authResult->message());
         }
 
-        $tenantResult = $this->resolveTenant($id);
-        if (! $tenantResult['ok']) {
-            return $tenantResult['response'];
+        $tenant = $this->resolveTenant($id);
+        if (! $tenant instanceof Tenant) {
+            return $this->tenantNotFoundResponse();
         }
-        $tenant = $tenantResult['tenant'];
 
         $optimisticLockError = $this->ensureOptimisticLock($request, $tenant, 'Tenant');
         if ($optimisticLockError) {
@@ -191,11 +190,10 @@ class TenantController extends ApiController
             return $this->error($authResult->code(), $authResult->message());
         }
 
-        $tenantResult = $this->resolveTenant($id, ['users', 'roles']);
-        if (! $tenantResult['ok']) {
-            return $tenantResult['response'];
+        $tenant = $this->resolveTenant($id, ['users', 'roles']);
+        if (! $tenant instanceof Tenant) {
+            return $this->tenantNotFoundResponse();
         }
-        $tenant = $tenantResult['tenant'];
 
         if (($tenant->users_count ?? 0) > 0) {
             return $this->error(self::PARAM_ERROR_CODE, 'Tenant has assigned users');
@@ -253,27 +251,20 @@ class TenantController extends ApiController
 
     /**
      * @param  list<string>  $withCount
-     * @return array{ok: true, tenant: Tenant}|array{ok: false, response: JsonResponse}
      */
-    private function resolveTenant(int $id, array $withCount = []): array
+    private function resolveTenant(int $id, array $withCount = []): ?Tenant
     {
         $query = Tenant::query();
         if ($withCount !== []) {
             $query->withCount($withCount);
         }
 
-        $tenant = $query->find($id);
-        if ($tenant instanceof Tenant) {
-            return [
-                'ok' => true,
-                'tenant' => $tenant,
-            ];
-        }
+        return $query->find($id);
+    }
 
-        return [
-            'ok' => false,
-            'response' => $this->error(self::PARAM_ERROR_CODE, 'Tenant not found'),
-        ];
+    private function tenantNotFoundResponse(): JsonResponse
+    {
+        return $this->error(self::PARAM_ERROR_CODE, 'Tenant not found');
     }
 
     /**

@@ -160,11 +160,10 @@ class PermissionController extends ApiController
             return $this->error($authResult->code(), $authResult->message());
         }
 
-        $permissionResult = $this->resolvePermission($id);
-        if (! $permissionResult['ok']) {
-            return $permissionResult['response'];
+        $permission = $this->resolvePermission($id);
+        if (! $permission instanceof Permission) {
+            return $this->permissionNotFoundResponse();
         }
-        $permission = $permissionResult['permission'];
 
         $optimisticLockError = $this->ensureOptimisticLock($request, $permission, 'Permission');
         if ($optimisticLockError) {
@@ -206,11 +205,10 @@ class PermissionController extends ApiController
             return $this->error($authResult->code(), $authResult->message());
         }
 
-        $permissionResult = $this->resolvePermission($id, ['roles']);
-        if (! $permissionResult['ok']) {
-            return $permissionResult['response'];
+        $permission = $this->resolvePermission($id, ['roles']);
+        if (! $permission instanceof Permission) {
+            return $this->permissionNotFoundResponse();
         }
-        $permission = $permissionResult['permission'];
 
         if (($permission->roles_count ?? 0) > 0) {
             return $this->error(self::PARAM_ERROR_CODE, 'Permission is assigned to roles');
@@ -266,27 +264,20 @@ class PermissionController extends ApiController
 
     /**
      * @param  list<string>  $withCount
-     * @return array{ok: true, permission: Permission}|array{ok: false, response: JsonResponse}
      */
-    private function resolvePermission(int $id, array $withCount = []): array
+    private function resolvePermission(int $id, array $withCount = []): ?Permission
     {
         $query = Permission::query();
         if ($withCount !== []) {
             $query->withCount($withCount);
         }
 
-        $permission = $query->find($id);
-        if ($permission instanceof Permission) {
-            return [
-                'ok' => true,
-                'permission' => $permission,
-            ];
-        }
+        return $query->find($id);
+    }
 
-        return [
-            'ok' => false,
-            'response' => $this->error(self::PARAM_ERROR_CODE, 'Permission not found'),
-        ];
+    private function permissionNotFoundResponse(): JsonResponse
+    {
+        return $this->error(self::PARAM_ERROR_CODE, 'Permission not found');
     }
 
     /**

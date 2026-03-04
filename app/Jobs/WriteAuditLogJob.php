@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Domains\System\Services\AuditLogService;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Foundation\Queue\Queueable;
 
-class WriteAuditLogJob implements ShouldQueue
+class WriteAuditLogJob implements ShouldQueueAfterCommit
 {
     use Queueable;
 
