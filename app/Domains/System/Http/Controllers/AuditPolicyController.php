@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\System\Http\Controllers;
 
 use App\Domains\Access\Models\User;
+use App\Domains\Shared\Auth\ApiAuthResult;
 use App\Domains\Shared\Http\Controllers\ApiController;
 use App\Domains\System\Events\AuditPolicyUpdatedEvent;
 use App\Domains\System\Events\SystemRealtimeUpdated;
@@ -28,8 +29,8 @@ class AuditPolicyController extends ApiController
     public function list(ListAuditPoliciesRequest $request): JsonResponse
     {
         $authResult = $this->authorizeAuditPolicyConsole($request, 'audit.policy.view');
-        if (! $authResult['ok']) {
-            return $this->error($authResult['code'], $authResult['msg']);
+        if ($authResult->failed()) {
+            return $this->error($authResult->code(), $authResult->message());
         }
 
         return $this->success([
@@ -40,8 +41,8 @@ class AuditPolicyController extends ApiController
     public function history(ListAuditPolicyHistoryRequest $request): JsonResponse
     {
         $authResult = $this->authorizeAuditPolicyConsole($request, 'audit.policy.view');
-        if (! $authResult['ok']) {
-            return $this->error($authResult['code'], $authResult['msg']);
+        if ($authResult->failed()) {
+            return $this->error($authResult->code(), $authResult->message());
         }
 
         $validated = $request->validated();
@@ -55,11 +56,11 @@ class AuditPolicyController extends ApiController
     public function update(UpdateAuditPoliciesRequest $request): JsonResponse
     {
         $authResult = $this->authorizeAuditPolicyConsole($request, 'audit.policy.manage');
-        if (! $authResult['ok']) {
-            return $this->error($authResult['code'], $authResult['msg']);
+        if ($authResult->failed()) {
+            return $this->error($authResult->code(), $authResult->message());
         }
 
-        $user = $authResult['user'] ?? null;
+        $user = $authResult->user();
         if (! $user instanceof User) {
             return $this->error(self::UNAUTHORIZED_CODE, 'Unauthorized');
         }
@@ -99,48 +100,23 @@ class AuditPolicyController extends ApiController
         ], 'Audit policy updated');
     }
 
-    /**
-     * @return array{
-     *   ok: bool,
-     *   code: string,
-     *   msg: string,
-     *   user?: \App\Domains\Access\Models\User,
-     *   token?: \Laravel\Sanctum\PersonalAccessToken
-     * }
-     */
-    private function authorizeAuditPolicyConsole(Request $request, string $permissionCode): array
+    private function authorizeAuditPolicyConsole(Request $request, string $permissionCode): ApiAuthResult
     {
         $authResult = $this->authenticate($request, 'access-api');
         if ($authResult->failed()) {
-            return [
-                'ok' => false,
-                'code' => $authResult->code(),
-                'msg' => $authResult->message(),
-            ];
+            return $authResult;
         }
 
         $user = $authResult->user();
         if (! $user instanceof User) {
-            return [
-                'ok' => false,
-                'code' => self::UNAUTHORIZED_CODE,
-                'msg' => 'Unauthorized',
-            ];
+            return ApiAuthResult::failure(self::UNAUTHORIZED_CODE, 'Unauthorized');
         }
         if (! $this->tenantContextService->isSuperAdmin($user)) {
-            return [
-                'ok' => false,
-                'code' => self::FORBIDDEN_CODE,
-                'msg' => 'Forbidden',
-            ];
+            return ApiAuthResult::failure(self::FORBIDDEN_CODE, 'Forbidden');
         }
 
         if (! $user->hasPermission($permissionCode)) {
-            return [
-                'ok' => false,
-                'code' => self::FORBIDDEN_CODE,
-                'msg' => 'Forbidden',
-            ];
+            return ApiAuthResult::failure(self::FORBIDDEN_CODE, 'Forbidden');
         }
 
         $selectedTenantRaw = $request->header('X-Tenant-Id');
@@ -148,18 +124,9 @@ class AuditPolicyController extends ApiController
             ? (int) trim($selectedTenantRaw)
             : 0;
         if ($selectedTenantId > 0) {
-            return [
-                'ok' => false,
-                'code' => self::FORBIDDEN_CODE,
-                'msg' => 'Switch to No Tenant to manage audit policy',
-            ];
+            return ApiAuthResult::failure(self::FORBIDDEN_CODE, 'Switch to No Tenant to manage audit policy');
         }
 
-        return [
-            'ok' => true,
-            'code' => self::SUCCESS_CODE,
-            'msg' => 'ok',
-            'user' => $user,
-        ];
+        return ApiAuthResult::success($user, $authResult->token());
     }
 }

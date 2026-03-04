@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\System\Http\Controllers;
 
 use App\Domains\Access\Models\User;
+use App\Domains\Shared\Auth\ApiAuthResult;
 use App\Domains\Shared\Http\Controllers\ApiController;
 use App\Domains\Shared\Services\ApiCacheService;
 use App\Domains\System\Http\Resources\LanguageTranslationListResource;
@@ -18,7 +19,6 @@ use App\Http\Requests\Api\Language\UpdateLanguageTranslationRequest;
 use App\Support\LocaleDefaults;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Laravel\Sanctum\PersonalAccessToken;
 
 class LanguageController extends ApiController
 {
@@ -31,8 +31,8 @@ class LanguageController extends ApiController
     public function list(ListLanguageTranslationsRequest $request): JsonResponse
     {
         $authResult = $this->authorizeLanguageConsole($request, 'language.view');
-        if (! $authResult['ok']) {
-            return $this->error($authResult['code'], $authResult['msg']);
+        if ($authResult->failed()) {
+            return $this->error($authResult->code(), $authResult->message());
         }
 
         $validated = $request->validated();
@@ -100,8 +100,8 @@ class LanguageController extends ApiController
     public function options(Request $request): JsonResponse
     {
         $authResult = $this->authorizeLanguageConsole($request, 'language.view');
-        if (! $authResult['ok']) {
-            return $this->error($authResult['code'], $authResult['msg']);
+        if ($authResult->failed()) {
+            return $this->error($authResult->code(), $authResult->message());
         }
 
         $records = $this->apiCacheService->remember(
@@ -227,11 +227,14 @@ class LanguageController extends ApiController
     public function store(StoreLanguageTranslationRequest $request): JsonResponse
     {
         $authResult = $this->authorizeLanguageConsole($request, 'language.manage');
-        if (! $authResult['ok']) {
-            return $this->error($authResult['code'], $authResult['msg']);
+        if ($authResult->failed()) {
+            return $this->error($authResult->code(), $authResult->message());
         }
 
-        $user = $authResult['user'];
+        $user = $authResult->user();
+        if (! $user instanceof User) {
+            return $this->error(self::UNAUTHORIZED_CODE, 'Unauthorized');
+        }
         $validated = $request->validated();
         $language = Language::query()->where('code', (string) $validated['locale'])->first();
         if (! $language) {
@@ -268,8 +271,8 @@ class LanguageController extends ApiController
     public function update(UpdateLanguageTranslationRequest $request, int $id): JsonResponse
     {
         $authResult = $this->authorizeLanguageConsole($request, 'language.manage');
-        if (! $authResult['ok']) {
-            return $this->error($authResult['code'], $authResult['msg']);
+        if ($authResult->failed()) {
+            return $this->error($authResult->code(), $authResult->message());
         }
 
         $translation = LanguageTranslation::query()->find($id);
@@ -282,7 +285,10 @@ class LanguageController extends ApiController
             return $optimisticLockError;
         }
 
-        $user = $authResult['user'];
+        $user = $authResult->user();
+        if (! $user instanceof User) {
+            return $this->error(self::UNAUTHORIZED_CODE, 'Unauthorized');
+        }
         $validated = $request->validated();
 
         $language = Language::query()->where('code', (string) $validated['locale'])->first();
@@ -327,8 +333,8 @@ class LanguageController extends ApiController
     public function destroy(Request $request, int $id): JsonResponse
     {
         $authResult = $this->authorizeLanguageConsole($request, 'language.manage');
-        if (! $authResult['ok']) {
-            return $this->error($authResult['code'], $authResult['msg']);
+        if ($authResult->failed()) {
+            return $this->error($authResult->code(), $authResult->message());
         }
 
         $translation = LanguageTranslation::query()->with('language:id,code')->find($id);
@@ -336,7 +342,10 @@ class LanguageController extends ApiController
             return $this->error(self::PARAM_ERROR_CODE, 'Language translation not found');
         }
 
-        $user = $authResult['user'];
+        $user = $authResult->user();
+        if (! $user instanceof User) {
+            return $this->error(self::UNAUTHORIZED_CODE, 'Unauthorized');
+        }
         $oldValues = [
             'locale' => $this->resolveTranslationLocale($translation),
             'translationKey' => (string) $translation->translation_key,
@@ -356,66 +365,29 @@ class LanguageController extends ApiController
         return $this->success([], 'Language translation deleted');
     }
 
-    /**
-     * @return array{ok:false, code:string, msg:string}|array{
-     *   ok:true,
-     *   code:string,
-     *   msg:string,
-     *   user:\App\Domains\Access\Models\User,
-     *   token?: \Laravel\Sanctum\PersonalAccessToken
-     * }
-     */
-    private function authorizeLanguageConsole(Request $request, string $permissionCode): array
+    private function authorizeLanguageConsole(Request $request, string $permissionCode): ApiAuthResult
     {
         $authResult = $this->authenticateAndAuthorize($request, 'access-api', $permissionCode);
         if ($authResult->failed()) {
-            return [
-                'ok' => false,
-                'code' => $authResult->code(),
-                'msg' => $authResult->message(),
-            ];
+            return $authResult;
         }
 
         $user = $authResult->user();
         if (! $user instanceof User) {
-            return [
-                'ok' => false,
-                'code' => self::UNAUTHORIZED_CODE,
-                'msg' => 'Unauthorized',
-            ];
+            return ApiAuthResult::failure(self::UNAUTHORIZED_CODE, 'Unauthorized');
         }
 
         if (! $this->isSuperAdmin($user)) {
-            return [
-                'ok' => false,
-                'code' => self::FORBIDDEN_CODE,
-                'msg' => 'Forbidden',
-            ];
+            return ApiAuthResult::failure(self::FORBIDDEN_CODE, 'Forbidden');
         }
 
         $selectedTenantHeader = $request->header('X-Tenant-Id');
         $selectedTenantId = is_numeric($selectedTenantHeader) ? (int) $selectedTenantHeader : 0;
         if ($selectedTenantId > 0) {
-            return [
-                'ok' => false,
-                'code' => self::FORBIDDEN_CODE,
-                'msg' => 'Switch to No Tenant to manage languages',
-            ];
+            return ApiAuthResult::failure(self::FORBIDDEN_CODE, 'Switch to No Tenant to manage languages');
         }
 
-        $result = [
-            'ok' => true,
-            'code' => self::SUCCESS_CODE,
-            'msg' => 'ok',
-            'user' => $user,
-        ];
-
-        $token = $authResult->token();
-        if ($token instanceof PersonalAccessToken) {
-            $result['token'] = $token;
-        }
-
-        return $result;
+        return ApiAuthResult::success($user, $authResult->token());
     }
 
     private function resolveRuntimeLanguage(string $requestedLocale): ?Language
