@@ -19,7 +19,7 @@ class TenantContextService
 
     public function resolveTenantContext(Request $request, User $user): TenantContext
     {
-        $user->loadMissing('role:id,code,level,status', 'tenant:id,name,status');
+        $user->loadMissing('role:id,code,level,status,tenant_id', 'tenant:id,name,status');
 
         if ($this->isSuperAdmin($user)) {
             $activeTenants = Tenant::query()
@@ -53,6 +53,16 @@ class TenantContextService
             );
         }
 
+        if ($this->isPlatformScopedUser($user)) {
+            return TenantContext::success(
+                tenantId: null,
+                tenantName: 'Platform',
+                tenants: [],
+                code: self::SUCCESS_CODE,
+                message: 'ok'
+            );
+        }
+
         if (! $user->tenant_id || ! $user->tenant || $user->tenant->status !== '1') {
             return TenantContext::failure(self::FORBIDDEN_CODE, 'Tenant is inactive');
         }
@@ -71,7 +81,7 @@ class TenantContextService
 
     public function resolveRoleScope(Request $request, User $user): RoleScopeContext
     {
-        $user->loadMissing('role:id,code,level,status', 'tenant:id,status');
+        $user->loadMissing('role:id,code,level,status,tenant_id', 'tenant:id,status');
 
         if ($this->isSuperAdmin($user)) {
             $activeTenantIds = Tenant::query()
@@ -89,6 +99,13 @@ class TenantContextService
             return RoleScopeContext::success(
                 tenantId: $tenantId,
                 isSuper: true
+            );
+        }
+
+        if ($this->isPlatformScopedUser($user)) {
+            return RoleScopeContext::success(
+                tenantId: null,
+                isSuper: false
             );
         }
 
@@ -112,6 +129,19 @@ class TenantContextService
         }
 
         return (string) $role->code === 'R_SUPER';
+    }
+
+    private function isPlatformScopedUser(User $user): bool
+    {
+        $role = $user->getRelationValue('role');
+        if (! $role instanceof Role) {
+            return false;
+        }
+
+        $userTenantId = $user->tenant_id !== null ? (int) $user->tenant_id : null;
+        $roleTenantId = $role->tenant_id !== null ? (int) $role->tenant_id : null;
+
+        return $userTenantId === null && $roleTenantId === null && (string) $role->status === '1';
     }
 
     private function headerTenantId(Request $request): int
