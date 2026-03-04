@@ -17,6 +17,10 @@ class TenantContextService
 
     public const FORBIDDEN_CODE = '1003';
 
+    private const NO_TENANTS_NAME = 'No Tenants';
+
+    private const PLATFORM_TENANT_NAME = 'Platform';
+
     public function resolveTenantContext(Request $request, User $user): TenantContext
     {
         $user->loadMissing('role:id,code,level,status,tenant_id', 'tenant:id,name,status');
@@ -46,7 +50,7 @@ class TenantContextService
 
             return TenantContext::success(
                 tenantId: $currentTenant ? (int) $currentTenant->id : null,
-                tenantName: $currentTenant ? (string) $currentTenant->name : 'No Tenants',
+                tenantName: $currentTenant ? (string) $currentTenant->name : self::NO_TENANTS_NAME,
                 tenants: $tenantOptions,
                 code: self::SUCCESS_CODE,
                 message: 'ok'
@@ -56,7 +60,7 @@ class TenantContextService
         if ($this->isPlatformScopedUser($user)) {
             return TenantContext::success(
                 tenantId: null,
-                tenantName: 'Platform',
+                tenantName: self::PLATFORM_TENANT_NAME,
                 tenants: [],
                 code: self::SUCCESS_CODE,
                 message: 'ok'

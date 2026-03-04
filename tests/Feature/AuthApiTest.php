@@ -2274,4 +2274,54 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('data.currentTenantName', 'Platform')
             ->assertJsonPath('data.menuScope', 'platform');
     }
+
+    public function test_platform_scoped_non_super_user_ignores_selected_tenant_header(): void
+    {
+        $this->seed();
+
+        $mainTenant = Tenant::query()->where('code', 'TENANT_MAIN')->firstOrFail();
+        $platformRole = Role::query()->create([
+            'code' => 'R_PLATFORM_OPERATOR',
+            'name' => 'Platform Operator',
+            'description' => 'Platform scoped non-super role',
+            'status' => '1',
+            'tenant_id' => null,
+            'level' => 700,
+        ]);
+        $platformRole->permissions()->sync(
+            Permission::query()
+                ->whereIn('code', ['dashboard.view'])
+                ->pluck('id')
+        );
+
+        User::query()->create([
+            'name' => 'PlatformOperator',
+            'email' => 'platform.operator@obsidian.local',
+            'password' => bcrypt('123456'),
+            'status' => '1',
+            'role_id' => $platformRole->id,
+            'tenant_id' => null,
+        ]);
+
+        $loginResponse = $this->postJson('/api/auth/login', [
+            'userName' => 'PlatformOperator',
+            'password' => '123456',
+        ]);
+
+        $loginResponse->assertOk()
+            ->assertJsonPath('code', '0000');
+
+        $token = (string) $loginResponse->json('data.token');
+
+        $userInfoResponse = $this->getJson('/api/auth/getUserInfo', [
+            'Authorization' => 'Bearer '.$token,
+            'X-Tenant-Id' => (string) $mainTenant->id,
+        ]);
+
+        $userInfoResponse->assertOk()
+            ->assertJsonPath('code', '0000')
+            ->assertJsonPath('data.currentTenantId', '')
+            ->assertJsonPath('data.currentTenantName', 'Platform')
+            ->assertJsonPath('data.menuScope', 'platform');
+    }
 }
