@@ -49,6 +49,7 @@ class AuditLogController extends ApiController
         $action = trim((string) ($validated['action'] ?? ''));
         $logType = trim((string) ($validated['logType'] ?? ''));
         $userName = trim((string) ($validated['userName'] ?? ''));
+        $requestId = trim((string) ($validated['requestId'] ?? ''));
         $dateFrom = trim((string) ($validated['dateFrom'] ?? ''));
         $dateTo = trim((string) ($validated['dateTo'] ?? ''));
 
@@ -82,6 +83,7 @@ class AuditLogController extends ApiController
                     ->orWhere('log_type', 'like', '%'.$keyword.'%')
                     ->orWhere('auditable_type', 'like', '%'.$keyword.'%')
                     ->orWhere('ip_address', 'like', '%'.$keyword.'%')
+                    ->orWhere('request_id', 'like', '%'.$keyword.'%')
                     ->orWhereHas('user', static function (Builder $userQuery) use ($keyword): void {
                         $userQuery->where('name', 'like', '%'.$keyword.'%');
                     });
@@ -102,7 +104,16 @@ class AuditLogController extends ApiController
             });
         }
 
+        if ($requestId !== '') {
+            $query->where('request_id', 'like', '%'.$requestId.'%');
+        }
+
         $userTimezone = \App\Support\ApiDateTime::requestTimezone($request);
+
+        if ($dateFrom === '' && $dateTo === '') {
+            $defaultFrom = now($userTimezone)->subDays(7)->utc();
+            $query->where('created_at', '>=', $defaultFrom);
+        }
 
         if ($dateFrom !== '') {
             $from = Carbon::parse($dateFrom, $userTimezone)->utc();

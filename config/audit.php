@@ -31,6 +31,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Audit Payload Sanitization
+    |--------------------------------------------------------------------------
+    |
+    | Sensitive keys are masked before persisting old/new values. Large payloads
+    | are replaced by compact metadata to prevent unbounded row growth.
+    |
+    */
+    'payload' => [
+        'redacted_text' => (string) env('AUDIT_REDACTED_TEXT', '[REDACTED]'),
+        'max_json_bytes' => (int) env('AUDIT_PAYLOAD_MAX_JSON_BYTES', 8192),
+        'sensitive_keys' => array_values(array_filter(array_map(
+            static fn (string $value): string => trim($value),
+            explode(',', (string) env(
+                'AUDIT_SENSITIVE_KEYS',
+                'password,password_confirmation,token,access_token,refresh_token,secret,client_secret,api_key,authorization,cookie,otp,two_factor_secret'
+            ))
+        ))),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Audit Queue Delivery
     |--------------------------------------------------------------------------
     |
@@ -48,6 +69,29 @@ return [
             explode(',', (string) env('AUDIT_QUEUE_BACKOFF', '5,30,120'))
         ))),
         'timeout' => (int) env('AUDIT_QUEUE_TIMEOUT', 15),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Access Logs (High Frequency)
+    |--------------------------------------------------------------------------
+    |
+    | Full request-level API logs are stored in a dedicated table to avoid
+    | bloating audit_logs. Sampling applies unless response is server error.
+    |
+    */
+    'api_access' => [
+        'enabled' => (bool) env('API_ACCESS_LOG_ENABLED', false),
+        'sample_rate' => (float) env('API_ACCESS_LOG_SAMPLE_RATE', 0.2),
+        'errors_only' => (bool) env('API_ACCESS_LOG_ERRORS_ONLY', false),
+        'retention_days' => (int) env('API_ACCESS_LOG_RETENTION_DAYS', 30),
+        'excluded_paths' => array_values(array_filter(array_map(
+            static fn (string $value): string => trim($value),
+            explode(',', (string) env(
+                'API_ACCESS_LOG_EXCLUDED_PATHS',
+                'api/health*,api/health/*,api/language/messages,api/language/locales,api/system/bootstrap'
+            ))
+        ))),
     ],
 
     /*

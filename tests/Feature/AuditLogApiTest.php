@@ -201,6 +201,105 @@ class AuditLogApiTest extends TestCase
             ->assertJsonPath('data.records.0.logType', 'permission');
     }
 
+    public function test_admin_can_filter_audit_logs_by_request_id(): void
+    {
+        $this->seed();
+
+        $mainTenant = Tenant::query()->where('code', 'TENANT_MAIN')->firstOrFail();
+        $adminUser = User::query()->where('name', 'Admin')->firstOrFail();
+
+        AuditLog::query()->create([
+            'user_id' => $adminUser->id,
+            'tenant_id' => $mainTenant->id,
+            'action' => 'user.update',
+            'log_type' => 'data',
+            'auditable_type' => User::class,
+            'auditable_id' => $adminUser->id,
+            'new_values' => ['status' => '1'],
+            'request_id' => 'req-abc-123',
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'phpunit',
+        ]);
+
+        AuditLog::query()->create([
+            'user_id' => $adminUser->id,
+            'tenant_id' => $mainTenant->id,
+            'action' => 'user.update',
+            'log_type' => 'data',
+            'auditable_type' => User::class,
+            'auditable_id' => $adminUser->id,
+            'new_values' => ['status' => '1'],
+            'request_id' => 'req-other',
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'phpunit',
+        ]);
+
+        $token = $this->loginAndGetToken('Admin');
+
+        $response = $this->getJson('/api/audit/list?current=1&size=20&requestId=req-abc', [
+            'Authorization' => 'Bearer '.$token,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('code', '0000')
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.records.0.requestId', 'req-abc-123');
+    }
+
+    public function test_audit_log_list_defaults_to_last_7_days_when_no_date_filters_provided(): void
+    {
+        $this->seed();
+
+        $mainTenant = Tenant::query()->where('code', 'TENANT_MAIN')->firstOrFail();
+        $adminUser = User::query()->where('name', 'Admin')->firstOrFail();
+
+        $recent = AuditLog::query()->create([
+            'user_id' => $adminUser->id,
+            'tenant_id' => $mainTenant->id,
+            'action' => 'user.update',
+            'log_type' => 'data',
+            'auditable_type' => User::class,
+            'auditable_id' => $adminUser->id,
+            'new_values' => ['status' => '1'],
+            'request_id' => 'req-recent',
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'phpunit',
+        ]);
+
+        $old = AuditLog::query()->create([
+            'user_id' => $adminUser->id,
+            'tenant_id' => $mainTenant->id,
+            'action' => 'user.update',
+            'log_type' => 'data',
+            'auditable_type' => User::class,
+            'auditable_id' => $adminUser->id,
+            'new_values' => ['status' => '1'],
+            'request_id' => 'req-old',
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'phpunit',
+        ]);
+
+        $recent->forceFill([
+            'created_at' => now()->subDays(2),
+            'updated_at' => now()->subDays(2),
+        ])->save();
+        $old->forceFill([
+            'created_at' => now()->subDays(12),
+            'updated_at' => now()->subDays(12),
+        ])->save();
+
+        $token = $this->loginAndGetToken('Admin');
+
+        $response = $this->getJson('/api/audit/list?current=1&size=20', [
+            'Authorization' => 'Bearer '.$token,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('code', '0000')
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.records.0.requestId', 'req-recent');
+    }
+
     public function test_audit_log_service_assigns_log_type_for_permission_action(): void
     {
         $this->seed();
@@ -239,6 +338,67 @@ class AuditLogApiTest extends TestCase
             'action' => 'role.update',
             'log_type' => 'permission',
         ]);
+    }
+
+    public function test_audit_log_service_masks_sensitive_payload_fields(): void
+    {
+        $this->seed();
+        config()->set('audit.queue.enabled', false);
+        config()->set('audit.payload.max_json_bytes', 10000);
+        config()->set('audit.payload.redacted_text', '[REDACTED]');
+
+        $adminUser = User::query()->where('name', 'Admin')->firstOrFail();
+
+        app(AuditLogService::class)->record(
+            action: 'user.update',
+            auditable: $adminUser,
+            actor: $adminUser,
+            request: null,
+            oldValues: [
+                'password' => 'old-password',
+                'token' => 'old-token',
+            ],
+            newValues: [
+                'password' => 'new-password',
+                'profile' => [
+                    'api_key' => 'secret-key',
+                ],
+            ],
+            tenantId: (int) $adminUser->tenant_id
+        );
+
+        /** @var \App\Domains\System\Models\AuditLog $record */
+        $record = AuditLog::query()->latest('id')->firstOrFail();
+
+        $this->assertSame('[REDACTED]', (string) ($record->old_values['password'] ?? ''));
+        $this->assertSame('[REDACTED]', (string) ($record->old_values['token'] ?? ''));
+        $this->assertSame('[REDACTED]', (string) (($record->new_values['profile']['api_key'] ?? null)));
+    }
+
+    public function test_audit_log_service_truncates_oversized_payload(): void
+    {
+        $this->seed();
+        config()->set('audit.queue.enabled', false);
+        config()->set('audit.payload.max_json_bytes', 256);
+
+        $adminUser = User::query()->where('name', 'Admin')->firstOrFail();
+
+        app(AuditLogService::class)->record(
+            action: 'user.update',
+            auditable: $adminUser,
+            actor: $adminUser,
+            request: null,
+            oldValues: [],
+            newValues: [
+                'note' => str_repeat('x', 2000),
+            ],
+            tenantId: (int) $adminUser->tenant_id
+        );
+
+        /** @var \App\Domains\System\Models\AuditLog $record */
+        $record = AuditLog::query()->latest('id')->firstOrFail();
+        $this->assertTrue((bool) ($record->new_values['_truncated'] ?? false));
+        $this->assertSame('payload_oversize', (string) ($record->new_values['_reason'] ?? ''));
     }
 
     private function loginAndGetToken(string $userName): string

@@ -159,8 +159,8 @@ class AuditLogService
             ),
             'auditable_type' => trim((string) $payload['auditable_type']),
             'auditable_id' => is_numeric($payload['auditable_id']) ? (int) $payload['auditable_id'] : null,
-            'old_values' => is_array($payload['old_values']) ? $payload['old_values'] : null,
-            'new_values' => is_array($payload['new_values']) ? $payload['new_values'] : null,
+            'old_values' => $this->sanitizeAuditValues($payload['old_values'] ?? null),
+            'new_values' => $this->sanitizeAuditValues($payload['new_values'] ?? null),
             'ip_address' => ($payload['ip_address'] ?? null) !== null ? trim((string) $payload['ip_address']) : null,
             'user_agent' => ($payload['user_agent'] ?? null) !== null ? trim((string) $payload['user_agent']) : null,
             'request_id' => ($payload['request_id'] ?? null) !== null ? trim((string) $payload['request_id']) : null,
@@ -238,5 +238,111 @@ class AuditLogService
         }
 
         return AuditLog::LOG_TYPE_OPERATION;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function sanitizeAuditValues(mixed $values): ?array
+    {
+        if (! is_array($values)) {
+            return null;
+        }
+
+        $masked = $this->maskSensitiveValues($values);
+
+        return $this->shrinkPayloadIfOversized($masked);
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     * @return array<string, mixed>
+     */
+    private function maskSensitiveValues(array $values): array
+    {
+        $result = [];
+
+        foreach ($values as $key => $value) {
+            $keyName = trim((string) $key);
+
+            if ($this->isSensitiveKey($keyName)) {
+                $result[$key] = $this->redactedText();
+
+                continue;
+            }
+
+            if (is_array($value)) {
+                /** @var array<string, mixed> $value */
+                $result[$key] = $this->maskSensitiveValues($value);
+
+                continue;
+            }
+
+            $result[$key] = $value;
+        }
+
+        return $result;
+    }
+
+    private function isSensitiveKey(string $key): bool
+    {
+        $normalizedKey = strtolower(trim($key));
+        if ($normalizedKey === '') {
+            return false;
+        }
+
+        $sensitiveKeys = config('audit.payload.sensitive_keys', []);
+        if (! is_array($sensitiveKeys)) {
+            return false;
+        }
+
+        foreach ($sensitiveKeys as $item) {
+            $needle = strtolower(trim((string) $item));
+            if ($needle === '') {
+                continue;
+            }
+
+            if (str_contains($normalizedKey, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     * @return array<string, mixed>
+     */
+    private function shrinkPayloadIfOversized(array $values): array
+    {
+        $maxBytes = max(256, (int) config('audit.payload.max_json_bytes', 8192));
+        $encoded = json_encode($values, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if (! is_string($encoded)) {
+            return [
+                '_truncated' => true,
+                '_reason' => 'json_encode_failed',
+            ];
+        }
+
+        $size = strlen($encoded);
+        if ($size <= $maxBytes) {
+            return $values;
+        }
+
+        return [
+            '_truncated' => true,
+            '_reason' => 'payload_oversize',
+            '_maxBytes' => $maxBytes,
+            '_sizeBytes' => $size,
+            '_checksum' => hash('sha256', $encoded),
+        ];
+    }
+
+    private function redactedText(): string
+    {
+        $text = trim((string) config('audit.payload.redacted_text', '[REDACTED]'));
+
+        return $text !== '' ? $text : '[REDACTED]';
     }
 }

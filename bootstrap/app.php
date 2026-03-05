@@ -37,10 +37,15 @@ return Application::configure(basePath: dirname(__DIR__))
             $middleware->trustProxies($trustedProxies, $trustedProxyHeaders);
         }
 
-        $middleware->api(prepend: [
-            \App\Http\Middleware\AssignRequestId::class,
-            \App\Http\Middleware\SetRequestLocale::class,
-        ]);
+        $middleware->api(
+            prepend: [
+                \App\Http\Middleware\AssignRequestId::class,
+                \App\Http\Middleware\SetRequestLocale::class,
+            ],
+            append: [
+                \App\Http\Middleware\RecordApiAccessLog::class,
+            ]
+        );
 
         $middleware->alias([
             'tenant.context' => \App\Http\Middleware\ResolveTenantContext::class,

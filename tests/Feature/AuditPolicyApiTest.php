@@ -13,6 +13,20 @@ class AuditPolicyApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_all_declared_audit_events_define_log_type(): void
+    {
+        $events = config('audit.events', []);
+        $this->assertIsArray($events);
+
+        foreach ($events as $action => $definition) {
+            $this->assertIsArray($definition, "Audit event definition must be array: {$action}");
+
+            $logType = trim((string) ($definition['log_type'] ?? ''));
+            $this->assertNotSame('', $logType, "Audit event must define log_type: {$action}");
+            $this->assertContains($logType, ['login', 'api', 'operation', 'data', 'permission'], "Invalid log_type: {$action}");
+        }
+    }
+
     public function test_user_locale_update_audit_is_disabled_by_default(): void
     {
         $this->seed();
