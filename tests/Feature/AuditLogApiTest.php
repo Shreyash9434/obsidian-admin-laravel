@@ -6,6 +6,8 @@ namespace Tests\Feature;
 
 use App\Domains\Access\Models\User;
 use App\Domains\System\Models\AuditLog;
+use App\Domains\System\Models\AuditPolicy;
+use App\Domains\System\Services\AuditLogService;
 use App\Domains\Tenant\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -153,6 +155,90 @@ class AuditLogApiTest extends TestCase
             ->assertJsonPath('code', '0000')
             ->assertJsonPath('data.total', 1)
             ->assertJsonPath('data.records.0.tenantId', (string) $mainTenant->id);
+    }
+
+    public function test_admin_can_filter_audit_logs_by_log_type(): void
+    {
+        $this->seed();
+
+        $mainTenant = Tenant::query()->where('code', 'TENANT_MAIN')->firstOrFail();
+        $adminUser = User::query()->where('name', 'Admin')->firstOrFail();
+
+        AuditLog::query()->create([
+            'user_id' => $adminUser->id,
+            'tenant_id' => $mainTenant->id,
+            'action' => 'role.update',
+            'log_type' => 'permission',
+            'auditable_type' => 'role',
+            'auditable_id' => 1,
+            'new_values' => ['name' => 'Manager'],
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'phpunit',
+        ]);
+
+        AuditLog::query()->create([
+            'user_id' => $adminUser->id,
+            'tenant_id' => $mainTenant->id,
+            'action' => 'tenant.update',
+            'log_type' => 'data',
+            'auditable_type' => Tenant::class,
+            'auditable_id' => $mainTenant->id,
+            'new_values' => ['name' => 'Tenant Main'],
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'phpunit',
+        ]);
+
+        $token = $this->loginAndGetToken('Admin');
+
+        $response = $this->getJson('/api/audit/list?current=1&size=20&logType=permission', [
+            'Authorization' => 'Bearer '.$token,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('code', '0000')
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.records.0.action', 'role.update')
+            ->assertJsonPath('data.records.0.logType', 'permission');
+    }
+
+    public function test_audit_log_service_assigns_log_type_for_permission_action(): void
+    {
+        $this->seed();
+        config()->set('audit.queue.enabled', false);
+
+        $adminUser = User::query()->where('name', 'Admin')->firstOrFail();
+
+        // Ensure policy allows recording in case this action was overridden.
+        AuditPolicy::query()->updateOrCreate(
+            [
+                'tenant_scope_id' => $adminUser->tenant_id,
+                'action' => 'role.update',
+            ],
+            [
+                'tenant_id' => $adminUser->tenant_id,
+                'is_mandatory' => true,
+                'enabled' => true,
+                'sampling_rate' => 1.0,
+                'retention_days' => 365,
+            ]
+        );
+
+        app(AuditLogService::class)->record(
+            action: 'role.update',
+            auditable: 'role',
+            actor: $adminUser,
+            request: null,
+            oldValues: ['name' => 'Old Role'],
+            newValues: ['name' => 'New Role'],
+            tenantId: (int) $adminUser->tenant_id
+        );
+
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $adminUser->id,
+            'tenant_id' => (int) $adminUser->tenant_id,
+            'action' => 'role.update',
+            'log_type' => 'permission',
+        ]);
     }
 
     private function loginAndGetToken(string $userName): string

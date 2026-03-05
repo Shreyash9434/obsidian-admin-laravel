@@ -26,6 +26,7 @@ class WriteAuditLogJob implements ShouldQueueAfterCommit
      *   user_id: int|null,
      *   tenant_id: int|null,
      *   action: string,
+     *   log_type: string,
      *   auditable_type: string,
      *   auditable_id: int|null,
      *   old_values: array<string, mixed>|null,

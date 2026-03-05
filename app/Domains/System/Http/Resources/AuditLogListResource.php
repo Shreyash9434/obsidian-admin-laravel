@@ -30,6 +30,7 @@ class AuditLogListResource extends JsonResource
         return [
             'id' => $this->id,
             'action' => (string) $this->action,
+            'logType' => (string) ($this->log_type ?? ''),
             'userName' => $userName,
             'tenantId' => $this->tenant_id ? (string) $this->tenant_id : '',
             'tenantName' => $tenantName,

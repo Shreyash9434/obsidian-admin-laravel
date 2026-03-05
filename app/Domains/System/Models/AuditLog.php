@@ -15,6 +15,16 @@ class AuditLog extends Model
     /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
     use HasFactory;
 
+    public const LOG_TYPE_LOGIN = 'login';
+
+    public const LOG_TYPE_API = 'api';
+
+    public const LOG_TYPE_OPERATION = 'operation';
+
+    public const LOG_TYPE_DATA = 'data';
+
+    public const LOG_TYPE_PERMISSION = 'permission';
+
     /**
      * @var list<string>
      */
@@ -22,6 +32,7 @@ class AuditLog extends Model
         'user_id',
         'tenant_id',
         'action',
+        'log_type',
         'auditable_type',
         'auditable_id',
         'old_values',
@@ -39,6 +50,7 @@ class AuditLog extends Model
         return [
             'user_id' => 'integer',
             'tenant_id' => 'integer',
+            'log_type' => 'string',
             'auditable_id' => 'integer',
             'old_values' => 'array',
             'new_values' => 'array',
@@ -60,5 +72,19 @@ class AuditLog extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function logTypes(): array
+    {
+        return [
+            self::LOG_TYPE_LOGIN,
+            self::LOG_TYPE_API,
+            self::LOG_TYPE_OPERATION,
+            self::LOG_TYPE_DATA,
+            self::LOG_TYPE_PERMISSION,
+        ];
     }
 }

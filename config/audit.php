@@ -63,6 +63,7 @@ return [
     'events' => [
         'auth.login' => [
             'category' => 'optional',
+            'log_type' => 'login',
             'description' => 'User login',
             'default_enabled' => false,
             'default_retention_days' => 30,
@@ -70,6 +71,7 @@ return [
         ],
         'auth.logout' => [
             'category' => 'optional',
+            'log_type' => 'login',
             'description' => 'User logout',
             'default_enabled' => false,
             'default_retention_days' => 30,
@@ -77,19 +79,22 @@ return [
         ],
 
         // User security and lifecycle
-        'user.register' => ['category' => 'mandatory', 'description' => 'User account registration'],
-        'user.verify_email' => ['category' => 'mandatory', 'description' => 'User email verification'],
-        'user.2fa.enable' => ['category' => 'mandatory', 'description' => 'Enable two-factor authentication'],
-        'user.2fa.disable' => ['category' => 'mandatory', 'description' => 'Disable two-factor authentication'],
-        'user.assign_role' => ['category' => 'mandatory', 'description' => 'Assign role to user'],
-        'user.create' => ['category' => 'mandatory', 'description' => 'Create user'],
-        'user.update' => ['category' => 'mandatory', 'description' => 'Update user'],
-        'user.delete' => ['category' => 'mandatory', 'description' => 'Delete user'],
-        'user.profile.update' => ['category' => 'mandatory', 'description' => 'Update own profile'],
+        'user.register' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'User account registration'],
+        'user.verify_email' => ['category' => 'mandatory', 'log_type' => 'login', 'description' => 'User email verification'],
+        'user.2fa.enable' => ['category' => 'mandatory', 'log_type' => 'login', 'description' => 'Enable two-factor authentication'],
+        'user.2fa.disable' => ['category' => 'mandatory', 'log_type' => 'login', 'description' => 'Disable two-factor authentication'],
+        'user.assign_role' => ['category' => 'mandatory', 'log_type' => 'permission', 'description' => 'Assign role to user'],
+        'user.create' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Create user'],
+        'user.update' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Update user'],
+        'user.delete' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Delete user (legacy)'],
+        'user.deactivate' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Deactivate user'],
+        'user.soft_delete' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Soft delete user'],
+        'user.profile.update' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Update own profile'],
 
         // Noisy preference event: disabled by default
         'user.locale.update' => [
             'category' => 'optional',
+            'log_type' => 'data',
             'description' => 'Update preferred language',
             'default_enabled' => false,
             'default_retention_days' => 30,
@@ -97,6 +102,7 @@ return [
         ],
         'user.preferences.update' => [
             'category' => 'optional',
+            'log_type' => 'data',
             'description' => 'Update user preferences',
             'default_enabled' => false,
             'default_retention_days' => 30,
@@ -104,28 +110,46 @@ return [
         ],
 
         // Role and permission management
-        'role.create' => ['category' => 'mandatory', 'description' => 'Create role'],
-        'role.update' => ['category' => 'mandatory', 'description' => 'Update role'],
-        'role.delete' => ['category' => 'mandatory', 'description' => 'Delete role'],
-        'role.sync_permissions' => ['category' => 'mandatory', 'description' => 'Sync role permissions'],
-        'permission.create' => ['category' => 'mandatory', 'description' => 'Create permission'],
-        'permission.update' => ['category' => 'mandatory', 'description' => 'Update permission'],
-        'permission.delete' => ['category' => 'mandatory', 'description' => 'Delete permission'],
+        'role.create' => ['category' => 'mandatory', 'log_type' => 'permission', 'description' => 'Create role'],
+        'role.update' => ['category' => 'mandatory', 'log_type' => 'permission', 'description' => 'Update role'],
+        'role.delete' => ['category' => 'mandatory', 'log_type' => 'permission', 'description' => 'Delete role (legacy)'],
+        'role.deactivate' => ['category' => 'mandatory', 'log_type' => 'permission', 'description' => 'Deactivate role'],
+        'role.soft_delete' => ['category' => 'mandatory', 'log_type' => 'permission', 'description' => 'Soft delete role'],
+        'role.sync_permissions' => ['category' => 'mandatory', 'log_type' => 'permission', 'description' => 'Sync role permissions'],
+        'permission.create' => ['category' => 'mandatory', 'log_type' => 'permission', 'description' => 'Create permission'],
+        'permission.update' => ['category' => 'mandatory', 'log_type' => 'permission', 'description' => 'Update permission'],
+        'permission.delete' => ['category' => 'mandatory', 'log_type' => 'permission', 'description' => 'Delete permission (legacy)'],
+        'permission.deactivate' => ['category' => 'mandatory', 'log_type' => 'permission', 'description' => 'Deactivate permission'],
+        'permission.soft_delete' => ['category' => 'mandatory', 'log_type' => 'permission', 'description' => 'Soft delete permission'],
 
         // Tenant management
-        'tenant.create' => ['category' => 'mandatory', 'description' => 'Create tenant'],
-        'tenant.update' => ['category' => 'mandatory', 'description' => 'Update tenant'],
-        'tenant.delete' => ['category' => 'mandatory', 'description' => 'Delete tenant'],
+        'tenant.create' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Create tenant'],
+        'tenant.update' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Update tenant'],
+        'tenant.delete' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Delete tenant (legacy)'],
+        'tenant.deactivate' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Deactivate tenant'],
+        'tenant.soft_delete' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Soft delete tenant'],
+
+        // Organization and team management
+        'organization.create' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Create organization'],
+        'organization.update' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Update organization'],
+        'organization.deactivate' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Deactivate organization'],
+        'organization.soft_delete' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Soft delete organization'],
+        'team.create' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Create team'],
+        'team.update' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Update team'],
+        'team.deactivate' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Deactivate team'],
+        'team.soft_delete' => ['category' => 'mandatory', 'log_type' => 'data', 'description' => 'Soft delete team'],
 
         // Localization content management
-        'language.translation.create' => ['category' => 'optional', 'description' => 'Create language translation'],
-        'language.translation.update' => ['category' => 'optional', 'description' => 'Update language translation'],
-        'language.translation.delete' => ['category' => 'optional', 'description' => 'Delete language translation'],
+        'language.translation.create' => ['category' => 'optional', 'log_type' => 'data', 'description' => 'Create language translation'],
+        'language.translation.update' => ['category' => 'optional', 'log_type' => 'data', 'description' => 'Update language translation'],
+        'language.translation.delete' => ['category' => 'optional', 'log_type' => 'data', 'description' => 'Delete language translation'],
 
         // Audit system operations
-        'audit.policy.update' => ['category' => 'mandatory', 'description' => 'Update audit policy'],
-        'system.config.update' => ['category' => 'mandatory', 'description' => 'Update system configuration'],
-        'theme.config.update' => ['category' => 'mandatory', 'description' => 'Update theme configuration'],
-        'theme.config.reset' => ['category' => 'mandatory', 'description' => 'Reset theme configuration'],
+        'audit.policy.update' => ['category' => 'mandatory', 'log_type' => 'permission', 'description' => 'Update audit policy'],
+        'system.config.update' => ['category' => 'mandatory', 'log_type' => 'operation', 'description' => 'Update system configuration'],
+        'theme.config.update' => ['category' => 'mandatory', 'log_type' => 'operation', 'description' => 'Update theme configuration'],
+        'theme.config.reset' => ['category' => 'mandatory', 'log_type' => 'operation', 'description' => 'Reset theme configuration'],
+        'feature-flag.toggle' => ['category' => 'mandatory', 'log_type' => 'operation', 'description' => 'Toggle feature flag'],
+        'feature-flag.purge' => ['category' => 'mandatory', 'log_type' => 'operation', 'description' => 'Purge feature flag override'],
     ],
 ];

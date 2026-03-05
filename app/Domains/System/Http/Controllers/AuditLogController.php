@@ -47,6 +47,7 @@ class AuditLogController extends ApiController
         $size = (int) ($validated['size'] ?? 10);
         $keyword = trim((string) ($validated['keyword'] ?? ''));
         $action = trim((string) ($validated['action'] ?? ''));
+        $logType = trim((string) ($validated['logType'] ?? ''));
         $userName = trim((string) ($validated['userName'] ?? ''));
         $dateFrom = trim((string) ($validated['dateFrom'] ?? ''));
         $dateTo = trim((string) ($validated['dateTo'] ?? ''));
@@ -58,6 +59,7 @@ class AuditLogController extends ApiController
                 'user_id',
                 'tenant_id',
                 'action',
+                'log_type',
                 'auditable_type',
                 'auditable_id',
                 'old_values',
@@ -77,6 +79,7 @@ class AuditLogController extends ApiController
         if ($keyword !== '') {
             $query->where(function (Builder $builder) use ($keyword): void {
                 $builder->where('action', 'like', '%'.$keyword.'%')
+                    ->orWhere('log_type', 'like', '%'.$keyword.'%')
                     ->orWhere('auditable_type', 'like', '%'.$keyword.'%')
                     ->orWhere('ip_address', 'like', '%'.$keyword.'%')
                     ->orWhereHas('user', static function (Builder $userQuery) use ($keyword): void {
@@ -87,6 +90,10 @@ class AuditLogController extends ApiController
 
         if ($action !== '') {
             $query->where('action', 'like', '%'.$action.'%');
+        }
+
+        if ($logType !== '') {
+            $query->where('log_type', $logType);
         }
 
         if ($userName !== '') {

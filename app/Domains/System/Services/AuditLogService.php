@@ -40,6 +40,7 @@ class AuditLogService
             'user_id' => $actor?->id,
             'tenant_id' => $effectiveTenantId,
             'action' => $action,
+            'log_type' => $this->resolveLogType($action),
             'auditable_type' => $auditableType,
             'auditable_id' => $auditableId > 0 ? $auditableId : null,
             'old_values' => $oldValues !== [] ? $oldValues : null,
@@ -74,7 +75,8 @@ class AuditLogService
      *   new_values: array<string, mixed>|null,
      *   ip_address: string|null,
      *   user_agent: string|null,
-     *   request_id: string|null
+     *   request_id: string|null,
+     *   log_type?: string|null
      * }  $payload
      */
     public function recordPreparedPayload(string $action, array $payload, ?int $tenantId): void
@@ -87,6 +89,7 @@ class AuditLogService
             'user_id' => $payload['user_id'],
             'tenant_id' => $tenantId,
             'action' => $action,
+            'log_type' => $payload['log_type'] ?? $this->resolveLogType($action),
             'auditable_type' => (string) $payload['auditable_type'],
             'auditable_id' => $payload['auditable_id'],
             'old_values' => $payload['old_values'],
@@ -102,6 +105,7 @@ class AuditLogService
      *   user_id: int|null,
      *   tenant_id: int|null,
      *   action: string,
+     *   log_type?: string|null,
      *   auditable_type: string,
      *   auditable_id: int|null,
      *   old_values: array<string, mixed>|null,
@@ -121,6 +125,7 @@ class AuditLogService
      *   user_id: int|null,
      *   tenant_id: int|null,
      *   action: string,
+     *   log_type?: string|null,
      *   auditable_type: string,
      *   auditable_id: int|null,
      *   old_values: array<string, mixed>|null,
@@ -133,6 +138,7 @@ class AuditLogService
      *   user_id: int|null,
      *   tenant_id: int|null,
      *   action: string,
+     *   log_type: string,
      *   auditable_type: string,
      *   auditable_id: int|null,
      *   old_values: array<string, mixed>|null,
@@ -148,6 +154,9 @@ class AuditLogService
             'user_id' => is_numeric($payload['user_id']) ? (int) $payload['user_id'] : null,
             'tenant_id' => is_numeric($payload['tenant_id']) ? (int) $payload['tenant_id'] : null,
             'action' => trim((string) $payload['action']),
+            'log_type' => $this->normalizeLogType(
+                ($payload['log_type'] ?? null) !== null ? (string) $payload['log_type'] : $this->resolveLogType((string) $payload['action'])
+            ),
             'auditable_type' => trim((string) $payload['auditable_type']),
             'auditable_id' => is_numeric($payload['auditable_id']) ? (int) $payload['auditable_id'] : null,
             'old_values' => is_array($payload['old_values']) ? $payload['old_values'] : null,
@@ -156,5 +165,78 @@ class AuditLogService
             'user_agent' => ($payload['user_agent'] ?? null) !== null ? trim((string) $payload['user_agent']) : null,
             'request_id' => ($payload['request_id'] ?? null) !== null ? trim((string) $payload['request_id']) : null,
         ];
+    }
+
+    private function resolveLogType(string $action): string
+    {
+        $eventConfig = config('audit.events.'.trim($action));
+        if (! is_array($eventConfig)) {
+            return $this->inferLogType($action);
+        }
+
+        $configuredType = trim((string) ($eventConfig['log_type'] ?? ''));
+        if ($configuredType !== '') {
+            return $this->normalizeLogType($configuredType);
+        }
+
+        return $this->inferLogType($action);
+    }
+
+    private function normalizeLogType(string $logType): string
+    {
+        $normalized = strtolower(trim($logType));
+
+        return match ($normalized) {
+            AuditLog::LOG_TYPE_LOGIN => AuditLog::LOG_TYPE_LOGIN,
+            AuditLog::LOG_TYPE_API => AuditLog::LOG_TYPE_API,
+            AuditLog::LOG_TYPE_DATA => AuditLog::LOG_TYPE_DATA,
+            AuditLog::LOG_TYPE_PERMISSION => AuditLog::LOG_TYPE_PERMISSION,
+            default => AuditLog::LOG_TYPE_OPERATION,
+        };
+    }
+
+    private function inferLogType(string $action): string
+    {
+        $normalizedAction = strtolower(trim($action));
+        if ($normalizedAction === '') {
+            return AuditLog::LOG_TYPE_OPERATION;
+        }
+
+        if (
+            str_starts_with($normalizedAction, 'auth.')
+            || $normalizedAction === 'user.verify_email'
+            || str_starts_with($normalizedAction, 'user.2fa.')
+        ) {
+            return AuditLog::LOG_TYPE_LOGIN;
+        }
+
+        if (
+            str_starts_with($normalizedAction, 'role.')
+            || str_starts_with($normalizedAction, 'permission.')
+            || $normalizedAction === 'user.assign_role'
+            || str_starts_with($normalizedAction, 'audit.policy.')
+            || str_starts_with($normalizedAction, 'audit-policy.')
+        ) {
+            return AuditLog::LOG_TYPE_PERMISSION;
+        }
+
+        if (
+            str_starts_with($normalizedAction, 'user.')
+            || str_starts_with($normalizedAction, 'tenant.')
+            || str_starts_with($normalizedAction, 'organization.')
+            || str_starts_with($normalizedAction, 'team.')
+            || str_starts_with($normalizedAction, 'language.translation.')
+        ) {
+            return AuditLog::LOG_TYPE_DATA;
+        }
+
+        if (
+            str_starts_with($normalizedAction, 'api.')
+            || str_starts_with($normalizedAction, 'request.')
+        ) {
+            return AuditLog::LOG_TYPE_API;
+        }
+
+        return AuditLog::LOG_TYPE_OPERATION;
     }
 }

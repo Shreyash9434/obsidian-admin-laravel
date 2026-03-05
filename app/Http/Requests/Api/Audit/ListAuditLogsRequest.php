@@ -19,6 +19,7 @@ class ListAuditLogsRequest extends BaseApiRequest
             'cursor' => ['nullable', 'string', 'max:255'],
             'keyword' => ['nullable', 'string', 'max:255'],
             'action' => ['nullable', 'string', 'max:120'],
+            'logType' => ['nullable', 'string', 'in:login,api,operation,data,permission'],
             'userName' => ['nullable', 'string', 'max:120'],
             'dateFrom' => ['nullable', 'date'],
             'dateTo' => ['nullable', 'date'],
