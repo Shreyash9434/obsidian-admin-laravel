@@ -65,18 +65,7 @@ jobs:
         with:
           path: obsidian-admin-laravel
 
-      - name: Checkout frontend repository (with token)
-        if: ${{ secrets.FRONTEND_REPO_TOKEN != '' }}
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ vars.FRONTEND_REPO || 'obsidianlabs-io/obsidian-admin-vue' }}
-          token: ${{ secrets.FRONTEND_REPO_TOKEN }}
-          path: obsidian-admin-vue
-          fetch-depth: 1
-          persist-credentials: false
-
-      - name: Checkout frontend repository (public)
-        if: ${{ secrets.FRONTEND_REPO_TOKEN == '' }}
+      - name: Checkout frontend repository
         uses: actions/checkout@v6
         with:
           repository: ${{ vars.FRONTEND_REPO || 'obsidianlabs-io/obsidian-admin-vue' }}
