@@ -77,6 +77,10 @@ php artisan serve
 
 ```bash
 composer run test
+# 使用 MySQL 配置执行测试
+composer run test:mysql
+# 使用 PostgreSQL 配置执行测试
+composer run test:pgsql
 ```
 
 > [!TIP]
@@ -222,6 +226,8 @@ php artisan octane:start
 
 ```bash
 composer run test
+composer run test:mysql
+composer run test:pgsql
 ```
 
 ### 方式二：Docker 容器化生产级部署

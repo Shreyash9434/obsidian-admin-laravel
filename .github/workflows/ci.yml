@@ -153,3 +153,59 @@ jobs:
 
       - name: Run tests (MySQL)
         run: vendor/bin/pest --configuration=phpunit.mysql.xml
+
+  tests-pgsql:
+    runs-on: ubuntu-latest
+    needs: quality
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: obsidian_testing
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d obsidian_testing"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+          extensions: pdo_pgsql
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare PostgreSQL environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          {
+            echo 'DB_CONNECTION=pgsql'
+            echo 'DB_HOST=127.0.0.1'
+            echo 'DB_PORT=5432'
+            echo 'DB_DATABASE=obsidian_testing'
+            echo 'DB_USERNAME=postgres'
+            echo 'DB_PASSWORD=postgres'
+          } >> .env
+
+      - name: Fresh migration and seed (PostgreSQL)
+        env:
+          CACHE_STORE: array
+          QUEUE_CONNECTION: sync
+          AUDIT_QUEUE_CONNECTION: sync
+        run: php artisan migrate:fresh --seed --force
+
+      - name: Run tests (PostgreSQL)
+        run: vendor/bin/pest --configuration=phpunit.pgsql.xml

@@ -94,6 +94,14 @@
             "@php artisan config:clear --ansi",
             "@php artisan test"
         ],
+        "test:mysql": [
+            "@php artisan config:clear --ansi",
+            "vendor/bin/pest --configuration=phpunit.mysql.xml"
+        ],
+        "test:pgsql": [
+            "@php artisan config:clear --ansi",
+            "vendor/bin/pest --configuration=phpunit.pgsql.xml"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
